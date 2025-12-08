@@ -21,9 +21,12 @@ pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
 /// Resolve a requested path relative to base directory with security validation.
 /// Returns error status codes for invalid or unauthorized paths.
 pub fn resolve_safe_path(base_dir: &Path, requested: &str) -> Result<PathBuf, StatusCode> {
-    if requested.starts_with('/') {
-        return Err(StatusCode::BAD_REQUEST);
-    }
+    // Strip leading slash if present (axum wildcard may include it)
+    let requested = requested.strip_prefix('/').unwrap_or(requested);
+
+    let base_dir = base_dir
+        .canonicalize()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let requested_path = base_dir.join(requested);
 
@@ -31,7 +34,7 @@ pub fn resolve_safe_path(base_dir: &Path, requested: &str) -> Result<PathBuf, St
         .canonicalize()
         .map_err(|_| StatusCode::NOT_FOUND)?;
 
-    if !resolved.starts_with(base_dir) {
+    if !resolved.starts_with(&base_dir) {
         return Err(StatusCode::FORBIDDEN);
     }
 
