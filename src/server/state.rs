@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use serde_json::to_string;
@@ -27,15 +27,20 @@ impl AppState {
         Self { file_path, content: RwLock::new(content), tx }
     }
 
-    pub async fn refresh(&self) {
-        let html = render(&self.file_path);
-        let mut content = self.content.write().await;
-        *content = html;
-        let path = self.file_path.display().to_string();
+    pub async fn refresh(&self, changed_path: &Path) {
+        let html = render(changed_path);
+        let path = changed_path.display().to_string();
+
+        // Update stored content only for the main file
+        if changed_path == self.file_path {
+            let mut content = self.content.write().await;
+            *content = html.clone();
+        }
+
         let msg = to_string(&WsMessage {
             msg_type: "update",
             path: &path,
-            content: &content,
+            content: &html,
         })
         .unwrap();
         let _ = self.tx.send(msg);
