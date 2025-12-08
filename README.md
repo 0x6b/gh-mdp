@@ -5,25 +5,25 @@ A GitHub Flavored Markdown live preview server that:
 - Reloads changes automatically
 - Preserves your scroll position as much as possible
 - Offers GitHub-style rendering
+- Serves relative links (images, files) from the markdown's directory
+- Renders linked markdown files with the same template
 - Integrates all resources into a single binary (no internet connection required)
-- Can be used as a `gh` extention
+- Can be used as a `gh` extension
 - Runs quickly
 
 ## Installation
 
 You can use the binary `gh-mdp` standalone.
 
-```
-$ cargo install --path .
+```console
+$ cargo install --git https://github.com/0x6b/gh-mdp
 $ gh-mdp README.md
 ```
 
 You can also install this as a [GitHub CLI](https://cli.github.com/) (`gh`) extension.
 
 ```console
-$ cargo build --release
-$ mv target/release/gh-mdp . # cp should also work, but sometimes it requires re-signing the binary
-$ gh extension install .
+$ gh extension install 0x6b/gh-mdp
 ```
 
 ## Usage
@@ -35,7 +35,8 @@ A GitHub Flavored Markdown live preview server
 Usage: gh-mdp [OPTIONS] [FILE]
 
 Arguments:
-  [FILE]  Markdown file to preview (defaults to README.md if not specified)
+  [FILE]  Markdown file or directory to preview (defaults to README.md if not
+          specified, or looks for README.md in the given directory)
 
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]

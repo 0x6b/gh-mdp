@@ -10,6 +10,7 @@ use super::markdown::render;
 pub struct WsMessage<'a> {
     #[serde(rename = "type")]
     pub msg_type: &'a str,
+    pub path: &'a str,
     pub content: &'a str,
 }
 
@@ -30,7 +31,13 @@ impl AppState {
         let html = render(&self.file_path);
         let mut content = self.content.write().await;
         *content = html;
-        let msg = to_string(&WsMessage { msg_type: "update", content: &content }).unwrap();
+        let path = self.file_path.display().to_string();
+        let msg = to_string(&WsMessage {
+            msg_type: "update",
+            path: &path,
+            content: &content,
+        })
+        .unwrap();
         let _ = self.tx.send(msg);
     }
 }

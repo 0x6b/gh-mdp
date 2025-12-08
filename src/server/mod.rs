@@ -1,4 +1,5 @@
 mod assets;
+mod files;
 mod markdown;
 mod state;
 mod watcher;
@@ -56,6 +57,7 @@ impl Server {
             .route("/", get(index_handler))
             .route("/ws", get(websocket::handler))
             .route("/assets/{path}", get(assets::handler))
+            .route("/{*path}", get(files::handler))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|request: &Request<_>| {

@@ -179,6 +179,7 @@
       ws.onmessage = e => {
         const data = JSON.parse(e.data);
         if (data.type !== 'update') return;
+        if (data.path !== $('#file-path').textContent) return;
         const anchor = findAnchor(), scrollY = window.scrollY;
         const tmp = document.createElement('div');
         tmp.innerHTML = data.content;
