@@ -22,7 +22,7 @@ You can also install this as a [GitHub CLI](https://cli.github.com/) (`gh`) exte
 
 ```console
 $ cargo build --release
-$ cp target/release/gh-mdp .
+$ mv target/release/gh-mdp . # cp should also work, but sometimes it requires re-signing the binary
 $ gh extension install .
 ```
 
