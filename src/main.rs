@@ -21,23 +21,31 @@ async fn main() -> Result<()> {
 
     let file = match file {
         Some(f) if f.is_dir() => {
+            let index = f.join("index.md");
             let readme = f.join("README.md");
-            if readme.exists() {
+            if index.exists() {
+                info!("Directory specified, using {}", index.display());
+                index.canonicalize().context("Failed to resolve path")?
+            } else if readme.exists() {
                 info!("Directory specified, using {}", readme.display());
                 readme.canonicalize().context("Failed to resolve path")?
             } else {
-                bail!("README.md not found in directory: {}", f.display());
+                bail!("No index.md or README.md found in directory: {}", f.display());
             }
         }
         Some(f) if f.exists() => f.canonicalize().context("Failed to resolve path")?,
         Some(f) => bail!("File not found: {}", f.display()),
         None => {
+            let index = PathBuf::from("index.md");
             let readme = PathBuf::from("README.md");
-            if readme.exists() {
+            if index.exists() {
+                info!("No file specified, using index.md");
+                index.canonicalize().context("Failed to resolve path")?
+            } else if readme.exists() {
                 info!("No file specified, using README.md");
                 readme.canonicalize().context("Failed to resolve path")?
             } else {
-                bail!("No file specified and README.md not found in current directory");
+                bail!("No file specified and no index.md or README.md found in current directory");
             }
         }
     };
