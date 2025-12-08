@@ -1,0 +1,64 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cli/gh-extension-precompile@v1
+        with:
+          build_script_override: "./scripts/build.sh"
+
+  release-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+      - name: Build for Intel macOS
+        run: bash ./scripts/build.sh
+        env:
+          TARGET_TRIPLE: x86_64-apple-darwin
+          OS_ARCH: darwin-amd64
+      - name: Build for Apple Silicon macOS
+        run: bash ./scripts/build.sh
+        env:
+          TARGET_TRIPLE: aarch64-apple-darwin
+          OS_ARCH: darwin-arm64
+      - name: Upload release artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            dist/darwin-amd64
+            dist/darwin-arm64
+
+  release-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Build for x86_64 Windows
+        run: bash ./scripts/build.sh
+        env:
+          TARGET_TRIPLE: x86_64-pc-windows-msvc
+          OS_ARCH: windows-amd64.exe
+      - name: Upload release artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: false
+          prerelease: false
+          files: |
+            dist/windows-amd64.exe
