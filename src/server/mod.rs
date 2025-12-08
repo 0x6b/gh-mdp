@@ -55,6 +55,7 @@ impl Server {
 
         let app = Router::new()
             .route("/", get(index_handler))
+            .route("/favicon.ico", get(assets::favicon_handler))
             .route("/ws", get(websocket::handler))
             .route("/assets/{path}", get(assets::handler))
             .route("/{*path}", get(files::handler))
