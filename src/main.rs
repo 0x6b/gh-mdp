@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
             let readme = PathBuf::from("README.md");
             if readme.exists() {
                 info!("No file specified, using README.md");
-                readme
+                readme.canonicalize().context("Failed to resolve path")?
             } else {
                 bail!("No file specified and README.md not found in current directory");
             }
