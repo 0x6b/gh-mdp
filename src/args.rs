@@ -5,9 +5,9 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[clap(about, version)]
 pub struct Args {
-    /// Markdown file to preview
+    /// Markdown file to preview (defaults to README.md if not specified)
     #[arg()]
-    pub file: PathBuf,
+    pub file: Option<PathBuf>,
 
     /// Port to listen on
     #[arg(short, long, default_value = "8888")]
