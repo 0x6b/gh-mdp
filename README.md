@@ -23,6 +23,9 @@ You can also install this as a [GitHub CLI](https://cli.github.com/) (`gh`) exte
 
 ```console
 $ gh extension install 0x6b/gh-mdp
+
+# if you have already installed, upgrade to the latest
+$ gh extension upgrade 0x6b/gh-mdp
 ```
 
 ## Usage
