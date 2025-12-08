@@ -2,14 +2,13 @@
 
 A GitHub Flavored Markdown live preview server that:
 
-- Reloads changes automatically
-- Preserves your scroll position as much as possible
-- Offers GitHub-style rendering
+- Watches all markdown files in the directory tree (respects `.gitignore`)
+- Reloads changes automatically with DOM diffing (preserves scroll position)
+- Offers GitHub-style rendering with syntax highlighting and Mermaid diagrams
 - Serves relative links (images, files) from the markdown's directory
 - Renders linked markdown files with the same template
 - Integrates all resources into a single binary (no internet connection required)
 - Can be used as a `gh` extension
-- Runs quickly
 
 ## Installation
 
@@ -35,8 +34,7 @@ A GitHub Flavored Markdown live preview server
 Usage: gh-mdp [OPTIONS] [FILE]
 
 Arguments:
-  [FILE]  Markdown file or directory to preview (defaults to README.md if not
-          specified, or looks for README.md in the given directory)
+  [FILE]  Markdown file or directory to preview (defaults to index.md or README.md)
 
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
@@ -44,6 +42,8 @@ Options:
   -h, --help         Print help
   -V, --version      Print version
 ```
+
+When a directory is specified, it looks for `index.md` first, then `README.md`.
 
 ## License
 
