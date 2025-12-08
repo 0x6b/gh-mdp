@@ -10,10 +10,10 @@
   <link rel="stylesheet" href="/assets/highlight-github-dark.min.css" media="(prefers-color-scheme: dark)">
   <style>
     :root {
-      --bg: #f6f8fa; --card: #fff; --border: #d0d7de; --accent: #0969da; --ok: #1a7f37; --err: #cf222e;
+      --bg: #f6f8fa; --card: #fff; --border: #d0d7de; --accent: #0969da;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #161b22; --card: #0d1117; --border: #30363d; --accent: #58a6ff; --ok: #3fb950; --err: #f85149; }
+      :root { --bg: #161b22; --card: #0d1117; --border: #30363d; --accent: #58a6ff; }
       .hljs { background: #161b22 !important; }
     }
     * { box-sizing: border-box; }
@@ -23,32 +23,23 @@
     @media (prefers-color-scheme: dark) { .header-icon { color: #fff; } }
     .header-title { font-size: 14px; font-weight: 600; color: #000; }
     @media (prefers-color-scheme: dark) { .header-title { color: #fff; } }
-    .status { margin-left: auto; font-size: 12px; display: flex; align-items: center; gap: 6px; }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
-    .status-dot.disconnected { background: var(--err); animation: none; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     .container { max-width: 980px; margin: 0 auto; padding: 32px 24px; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
-    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 12px 16px; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); transform: translateY(100px); opacity: 0; transition: all 0.3s ease; z-index: 1000; }
-    .toast.show { transform: translateY(0); opacity: 1; }
   </style>
 </head>
 <body>
   <header class="header">
     <svg class="header-icon" viewBox="0 0 208 128"><rect width="198" height="118" x="5" y="5" ry="10" stroke="currentColor" stroke-width="10" fill="none"/><path fill="currentColor" d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z"/></svg>
     <span class="header-title">{{file_path}}</span>
-    <div class="status"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting...</span></div>
   </header>
   <main class="container"><article class="markdown-body" id="content">{{content}}</article></main>
-  <div class="toast" id="toast"></div>
   <script src="/assets/highlight.min.js"></script>
   <script src="/assets/morphdom.min.js"></script>
   <script>
     const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
     const highlightCode = () => $$('pre code:not(.hljs)').forEach(b => hljs.highlightElement(b));
     highlightCode();
-    const showToast = m => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2000); };
     const findAnchor = () => {
       let best = null, bestOff = Infinity;
       for (const el of $$('#content h1,#content h2,#content h3,#content h4,#content p,#content li,#content pre')) {
@@ -67,9 +58,9 @@
     };
     function connect() {
       const ws = new WebSocket(`ws://${location.host}/ws`);
-      const dot = $('#statusDot'), status = $('#statusText'), content = $('#content');
-      ws.onopen = () => { dot.classList.remove('disconnected'); status.textContent = 'Watching'; };
-      ws.onclose = () => { dot.classList.add('disconnected'); status.textContent = 'Reconnecting...'; setTimeout(connect, 2000); };
+      const content = $('#content');
+      ws.onopen = () => {};
+      ws.onclose = () => { setTimeout(connect, 2000); };
       ws.onmessage = e => {
         const data = JSON.parse(e.data);
         if (data.type !== 'update') return;
@@ -81,7 +72,7 @@
           onBeforeElUpdated: (from, to) => from.tagName === 'CODE' && from.classList.contains('hljs') && from.textContent === to.textContent ? false : true
         });
         highlightCode();
-        requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); showToast('✓ Updated'); });
+        requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
       };
     }
     connect();
