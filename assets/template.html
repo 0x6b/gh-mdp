@@ -23,6 +23,9 @@
     @media (prefers-color-scheme: dark) { .header-icon { color: #fff; } }
     .header-title { font-size: 14px; font-weight: 600; color: #000; }
     @media (prefers-color-scheme: dark) { .header-title { color: #fff; } }
+    .copy-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
+    .copy-btn:hover { background: var(--bg); color: inherit; }
+    .copy-btn svg { width: 16px; height: 16px; }
     .container { max-width: 980px; margin: 0 auto; padding: 32px 24px; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
@@ -31,7 +34,10 @@
 <body>
   <header class="header">
     <svg class="header-icon" viewBox="0 0 208 128"><rect width="198" height="118" x="5" y="5" ry="10" stroke="currentColor" stroke-width="10" fill="none"/><path fill="currentColor" d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z"/></svg>
-    <span class="header-title">{{file_path}}</span>
+    <span class="header-title" id="file-path">{{file_path}}</span>
+    <button class="copy-btn" id="copy-btn" title="Copy path">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
+    </button>
   </header>
   <main class="container"><article class="markdown-body" id="content">{{content}}</article></main>
   <script src="/assets/highlight.min.js"></script>
@@ -60,6 +66,7 @@
     };
     highlightCode();
     renderMermaid();
+    $('#copy-btn').onclick = () => navigator.clipboard.writeText($('#file-path').textContent);
     const findAnchor = () => {
       let best = null, bestOff = Infinity;
       for (const el of $$('#content h1,#content h2,#content h3,#content h4,#content p,#content li,#content pre')) {
