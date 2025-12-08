@@ -61,3 +61,5 @@ The third-party assets are downloaded at build time and embedded into the final 
 | [morphdom](https://github.com/patrick-steele-idem/morphdom)                | MIT          | [LICENSE](https://github.com/patrick-steele-idem/morphdom/blob/master/LICENSE)   |
 
 The favicon and header icon use the [Markdown mark](https://commons.wikimedia.org/wiki/File:Markdown-mark.svg) from Wikimedia Commons (CC0/Public Domain).
+
+UI icons (copy, list) are from [Octicons](https://primer.style/foundations/icons) (MIT).
