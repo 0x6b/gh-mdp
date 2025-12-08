@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
-    let Args { file, port, bind, no_open } = Args::parse();
+    let Args { file, bind, no_open } = Args::parse();
 
     let file = match file {
         Some(f) if f.exists() => f.canonicalize().context("Failed to resolve path")?,
@@ -33,5 +33,5 @@ async fn main() -> Result<()> {
         }
     };
 
-    Server::try_new(file, &bind, port, !no_open)?.run().await
+    Server::try_new(file, &bind, !no_open)?.run().await
 }

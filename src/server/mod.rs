@@ -25,20 +25,21 @@ use watcher::watch;
 
 pub struct Server {
     state: Arc<AppState>,
-    addr: SocketAddr,
+    bind: String,
     open_browser: bool,
 }
 
 impl Server {
-    pub fn try_new(file_path: PathBuf, bind: &str, port: u16, open_browser: bool) -> Result<Self> {
+    pub fn try_new(file_path: PathBuf, bind: &str, open_browser: bool) -> Result<Self> {
         let (tx, _rx) = channel(16);
         let state = Arc::new(AppState::new(file_path, tx));
-        let addr = format!("{bind}:{port}").parse()?;
-        Ok(Self { state, addr, open_browser })
+        Ok(Self { state, bind: bind.to_string(), open_browser })
     }
 
     pub async fn run(self) -> Result<()> {
-        let url = format!("http://{}", self.addr);
+        let listener = TcpListener::bind(SocketAddr::from((self.bind.parse::<std::net::IpAddr>()?, 0))).await?;
+        let addr = listener.local_addr()?;
+        let url = format!("http://{addr}");
         info!("Listening on {url}");
         info!("Watching {}", self.state.file_path.display());
 
@@ -70,7 +71,7 @@ impl Server {
             )
             .with_state(self.state);
 
-        serve(TcpListener::bind(self.addr).await?, app).await?;
+        serve(listener, app).await?;
 
         Ok(())
     }

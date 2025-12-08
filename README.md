@@ -38,7 +38,6 @@ Arguments:
   <FILE>  Markdown file to preview
 
 Options:
-  -p, --port <PORT>  Port to listen on [default: 8888]
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
       --no-open      Don't open browser automatically
   -h, --help         Print help

@@ -9,10 +9,6 @@ pub struct Args {
     #[arg()]
     pub file: Option<PathBuf>,
 
-    /// Port to listen on
-    #[arg(short, long, default_value = "8888")]
-    pub port: u16,
-
     /// Bind address
     #[arg(short, long, default_value = "127.0.0.1")]
     pub bind: String,
