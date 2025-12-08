@@ -32,10 +32,10 @@ $ gh extension install .
 $ gh mdp --help
 A GitHub Flavored Markdown live preview server
 
-Usage: gh-mdp [OPTIONS] <FILE>
+Usage: gh-mdp [OPTIONS] [FILE]
 
 Arguments:
-  <FILE>  Markdown file to preview
+  [FILE]  Markdown file to preview (defaults to README.md if not specified)
 
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
