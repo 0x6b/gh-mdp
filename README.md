@@ -57,6 +57,7 @@ The third-party assets are downloaded at build time and embedded into the final 
 | -------------------------------------------------------------------------- | ------------ | ----------------------------------------------- |
 | [github-markdown-css](https://github.com/sindresorhus/github-markdown-css) | MIT          | [LICENSE](./assets/LICENSE-github-markdown-css) |
 | [highlight.js](https://highlightjs.org/)                                   | BSD-3-Clause | [LICENSE](./assets/LICENSE-highlight.js)        |
+| [mermaid](https://mermaid.js.org/)                                         | MIT          | [LICENSE](./assets/LICENSE-mermaid)             |
 | [morphdom](https://github.com/patrick-steele-idem/morphdom)                | MIT          | [LICENSE](./assets/LICENSE-morphdom)            |
 
 The favicon and header icon use the [Markdown mark](https://commons.wikimedia.org/wiki/File:Markdown-mark.svg) from Wikimedia Commons (CC0/Public Domain).

@@ -35,6 +35,15 @@ const ASSETS: &[(&str, &str)] = &[
         "https://raw.githubusercontent.com/sindresorhus/github-markdown-css/main/license",
         "LICENSE-github-markdown-css",
     ),
+    // mermaid (MIT)
+    (
+        "https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js",
+        "mermaid.min.js",
+    ),
+    (
+        "https://raw.githubusercontent.com/mermaid-js/mermaid/develop/LICENSE",
+        "LICENSE-mermaid",
+    ),
 ];
 
 fn main() -> Result<(), Box<dyn Error>> {

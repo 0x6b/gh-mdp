@@ -12,6 +12,7 @@ const HIGHLIGHT_CSS: &[u8] = include_bytes!("../../assets/highlight-github.min.c
 const HIGHLIGHT_DARK_CSS: &[u8] = include_bytes!("../../assets/highlight-github-dark.min.css");
 const HIGHLIGHT_JS: &[u8] = include_bytes!("../../assets/highlight.min.js");
 const MORPHDOM_JS: &[u8] = include_bytes!("../../assets/morphdom.min.js");
+const MERMAID_JS: &[u8] = include_bytes!("../../assets/mermaid.min.js");
 
 pub fn render_page(file_path: &path::Path, content: &str) -> String {
     TEMPLATE
@@ -26,6 +27,7 @@ pub async fn handler(extract::Path(path): extract::Path<String>) -> impl IntoRes
         "highlight-github-dark.min.css" => ("text/css", HIGHLIGHT_DARK_CSS),
         "highlight.min.js" => ("text/javascript", HIGHLIGHT_JS),
         "morphdom.min.js" => ("text/javascript", MORPHDOM_JS),
+        "mermaid.min.js" => ("text/javascript", MERMAID_JS),
         _ => return (StatusCode::NOT_FOUND, "Not found").into_response(),
     };
     ([(CONTENT_TYPE, content_type)], body).into_response()
