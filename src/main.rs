@@ -20,6 +20,15 @@ async fn main() -> Result<()> {
     let Args { file, bind, no_open } = Args::parse();
 
     let file = match file {
+        Some(f) if f.is_dir() => {
+            let readme = f.join("README.md");
+            if readme.exists() {
+                info!("Directory specified, using {}", readme.display());
+                readme.canonicalize().context("Failed to resolve path")?
+            } else {
+                bail!("README.md not found in directory: {}", f.display());
+            }
+        }
         Some(f) if f.exists() => f.canonicalize().context("Failed to resolve path")?,
         Some(f) => bail!("File not found: {}", f.display()),
         None => {
