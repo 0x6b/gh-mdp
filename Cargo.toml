@@ -24,11 +24,11 @@ pulldown-cmark = { version = "0.13.0", features = ["simd"] }
 notify-debouncer-mini = "0.7.0"
 
 # Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing = "0.1.43"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 
 # Error management
-anyhow = "1.0"
+anyhow = "1.0.100"
 
 # CLI handling
 clap = { version = "4.5.53", features = ["derive"] }
@@ -36,6 +36,8 @@ clap = { version = "4.5.53", features = ["derive"] }
 # Ser/deserialization
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
+
+# Open URL
 open = "5.3.3"
 
 [build-dependencies]
