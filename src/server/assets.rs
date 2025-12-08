@@ -1,18 +1,16 @@
-use std::{path, sync::Arc};
+use std::sync::Arc;
 
 use axum::{
     extract::{self, State},
-    http::{StatusCode, header::CONTENT_TYPE},
+    http::{header::CONTENT_TYPE, StatusCode},
     response::IntoResponse,
 };
-use mime_guess::from_path;
 use tokio::fs::read;
 
-use super::state::AppState;
+use super::{state::AppState, util};
 
 const FAVICON_SVG: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208 128"><rect width="198" height="118" x="5" y="5" ry="10" stroke="#000" stroke-width="10" fill="none"/><path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z"/></svg>"##;
 
-const TEMPLATE: &str = include_str!("../../assets/template.html");
 const GITHUB_MARKDOWN_CSS: &[u8] = include_bytes!("../../assets/github-markdown.min.css");
 const HIGHLIGHT_CSS: &[u8] = include_bytes!("../../assets/highlight-github.min.css");
 const HIGHLIGHT_DARK_CSS: &[u8] = include_bytes!("../../assets/highlight-github-dark.min.css");
@@ -20,17 +18,11 @@ const HIGHLIGHT_JS: &[u8] = include_bytes!("../../assets/highlight.min.js");
 const MORPHDOM_JS: &[u8] = include_bytes!("../../assets/morphdom.min.js");
 const MERMAID_JS: &[u8] = include_bytes!("../../assets/mermaid.min.js");
 
-pub fn render_page(file_path: &path::Path, content: &str) -> String {
-    TEMPLATE
-        .replace("{{file_path}}", &file_path.display().to_string())
-        .replace("{{content}}", content)
-}
-
-pub async fn favicon_handler() -> impl IntoResponse {
+pub async fn serve_favicon() -> impl IntoResponse {
     ([(CONTENT_TYPE, "image/svg+xml")], FAVICON_SVG)
 }
 
-pub async fn handler(
+pub async fn serve_asset(
     State(state): State<Arc<AppState>>,
     extract::Path(path): extract::Path<String>,
 ) -> impl IntoResponse {
@@ -54,30 +46,16 @@ pub async fn handler(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 
-    let requested = base_dir.join("assets").join(&path);
-
-    let Ok(resolved) = requested.canonicalize() else {
-        return StatusCode::NOT_FOUND.into_response();
+    let assets_path = format!("assets/{path}");
+    let resolved = match util::resolve_safe_path(base_dir, &assets_path) {
+        Ok(p) => p,
+        Err(status) => return status.into_response(),
     };
-
-    if !resolved.starts_with(base_dir) {
-        return StatusCode::FORBIDDEN.into_response();
-    }
 
     let Ok(content) = read(&resolved).await else {
         return StatusCode::NOT_FOUND.into_response();
     };
 
-    let content_type = from_path(&resolved)
-        .first()
-        .map(|m| m.to_string())
-        .unwrap_or_else(|| {
-            if std::str::from_utf8(&content).is_ok() {
-                "text/plain; charset=utf-8".to_string()
-            } else {
-                "application/octet-stream".to_string()
-            }
-        });
-
+    let content_type = util::guess_content_type(&resolved, &content);
     ([(CONTENT_TYPE, content_type)], content).into_response()
 }

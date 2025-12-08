@@ -13,7 +13,7 @@ use tokio::{select, spawn};
 
 use super::state::{AppState, WsMessage};
 
-pub async fn handler(
+pub async fn upgrade(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {

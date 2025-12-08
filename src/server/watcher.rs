@@ -10,6 +10,9 @@ use tracing::info;
 
 use super::state::AppState;
 
+/// Debounce duration for file system events to avoid excessive refreshes.
+const DEBOUNCE_DURATION: Duration = Duration::from_millis(100);
+
 pub async fn watch(state: Arc<AppState>) {
     let (tx, rx) = channel();
     let file_path = state.file_path.clone();
@@ -17,7 +20,7 @@ pub async fn watch(state: Arc<AppState>) {
 
     spawn(move || {
         let mut debouncer =
-            new_debouncer(Duration::from_millis(100), tx).expect("Failed to create debouncer");
+            new_debouncer(DEBOUNCE_DURATION, tx).expect("Failed to create debouncer");
 
         debouncer
             .watcher()

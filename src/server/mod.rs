@@ -2,6 +2,8 @@ mod assets;
 mod files;
 mod markdown;
 mod state;
+mod template;
+mod util;
 mod watcher;
 mod websocket;
 
@@ -13,7 +15,6 @@ use std::{
 };
 
 use anyhow::Result;
-use assets::render_page;
 use axum::{
     Router,
     extract::State,
@@ -60,11 +61,11 @@ impl Server {
         });
 
         let app = Router::new()
-            .route("/", get(index_handler))
-            .route("/favicon.ico", get(assets::favicon_handler))
-            .route("/ws", get(websocket::handler))
-            .route("/assets/{path}", get(assets::handler))
-            .route("/{*path}", get(files::handler))
+            .route("/", get(serve_index))
+            .route("/favicon.ico", get(assets::serve_favicon))
+            .route("/ws", get(websocket::upgrade))
+            .route("/assets/{path}", get(assets::serve_asset))
+            .route("/{*path}", get(files::serve_file))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|request: &Request<_>| {
@@ -86,7 +87,7 @@ impl Server {
     }
 }
 
-async fn index_handler(State(state): State<Arc<AppState>>) -> Html<String> {
+async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
     let content = state.content.read().await.clone();
-    Html(render_page(&state.file_path, &content))
+    Html(template::render_page(&state.file_path, &content))
 }
