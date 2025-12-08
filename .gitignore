@@ -1,0 +1,5 @@
+/target
+/assets/*.css
+/assets/*.js
+/assets/LICENSE*
+gh-mdp
