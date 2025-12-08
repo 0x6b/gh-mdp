@@ -5,7 +5,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[clap(about, version)]
 pub struct Args {
-    /// Markdown file to preview (defaults to README.md if not specified)
+    /// Markdown file or directory to preview (defaults to index.md or README.md)
     #[arg()]
     pub file: Option<PathBuf>,
 

@@ -51,6 +51,20 @@
       .layout { padding: 32px 16px; }
     }
   </style>
+  <script>
+    // Connect WebSocket immediately in head - no dependencies
+    var wsQueue = [];
+    var wsReady = false;
+    function connect() {
+      const ws = new WebSocket(`ws://${location.host}/ws`);
+      ws.onclose = () => setTimeout(connect, 2000);
+      ws.onmessage = e => {
+        if (wsReady) handleWsMessage(e.data);
+        else wsQueue.push(e.data);
+      };
+    }
+    connect();
+  </script>
 </head>
 <body>
   <header class="header">
@@ -69,15 +83,55 @@
       </nav>
     </aside>
   </div>
-  <script src="/assets/highlight.min.js"></script>
   <script src="/assets/morphdom.min.js"></script>
-  <script src="/assets/mermaid.min.js"></script>
   <script>
     const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+    const findAnchor = () => {
+      let best = null, bestOff = Infinity;
+      for (const el of $$('#content h1,#content h2,#content h3,#content h4,#content p,#content li,#content pre')) {
+        const off = el.getBoundingClientRect().top;
+        if (off >= -50 && off < bestOff) { best = el; bestOff = off; }
+      }
+      return best ? { tag: best.tagName, text: best.textContent.slice(0,100), off: bestOff } : null;
+    };
+    const restoreAnchor = a => {
+      if (!a) return false;
+      for (const el of $$(a.tag)) if (el.textContent.slice(0,100) === a.text) {
+        window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - a.off);
+        return true;
+      }
+      return false;
+    };
+    // Handle WebSocket messages (called from head script)
+    var handleWsMessage = msg => {
+      const data = JSON.parse(msg);
+      if (data.type !== 'update') return;
+      if (data.path !== $('#file-path').textContent) return;
+      const content = $('#content');
+      const anchor = findAnchor(), scrollY = window.scrollY;
+      const tmp = document.createElement('div');
+      tmp.innerHTML = data.content;
+      morphdom(content, tmp, {
+        childrenOnly: true,
+        onBeforeElUpdated: (from, to) => from.tagName === 'CODE' && from.classList.contains('hljs') && from.textContent === to.textContent ? false : true
+      });
+      if (typeof hljs !== 'undefined') $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
+      if (typeof renderMermaid === 'function') renderMermaid();
+      if (typeof buildToc === 'function') buildToc();
+      requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
+    };
+    // Process any queued messages and mark ready
+    wsReady = true;
+    wsQueue.forEach(handleWsMessage);
+    wsQueue = [];
+  </script>
+  <script src="/assets/highlight.min.js"></script>
+  <script src="/assets/mermaid.min.js"></script>
+  <script>
     const highlightCode = () => $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
     mermaid.initialize({ startOnLoad: false, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
     let mermaidId = 0;
-    const renderMermaid = async () => {
+    var renderMermaid = async () => {
       for (const code of $$('pre code.language-mermaid')) {
         const pre = code.parentElement;
         const definition = code.textContent;
@@ -95,7 +149,7 @@
     };
 
     // TOC generation
-    const buildToc = () => {
+    var buildToc = () => {
       const tocList = $('#toc-list');
       const headings = $$('#content h1, #content h2, #content h3, #content h4, #content h5, #content h6');
       tocList.innerHTML = '';
@@ -155,44 +209,6 @@
     renderMermaid();
     buildToc();
     $('#copy-btn').onclick = () => navigator.clipboard.writeText($('#file-path').textContent);
-    const findAnchor = () => {
-      let best = null, bestOff = Infinity;
-      for (const el of $$('#content h1,#content h2,#content h3,#content h4,#content p,#content li,#content pre')) {
-        const off = el.getBoundingClientRect().top;
-        if (off >= -50 && off < bestOff) { best = el; bestOff = off; }
-      }
-      return best ? { tag: best.tagName, text: best.textContent.slice(0,100), off: bestOff } : null;
-    };
-    const restoreAnchor = a => {
-      if (!a) return false;
-      for (const el of $$(a.tag)) if (el.textContent.slice(0,100) === a.text) {
-        window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - a.off);
-        return true;
-      }
-      return false;
-    };
-    function connect() {
-      const ws = new WebSocket(`ws://${location.host}/ws`);
-      const content = $('#content');
-      ws.onopen = () => {};
-      ws.onclose = () => { setTimeout(connect, 2000); };
-      ws.onmessage = e => {
-        const data = JSON.parse(e.data);
-        if (data.type !== 'update') return;
-        const anchor = findAnchor(), scrollY = window.scrollY;
-        const tmp = document.createElement('div');
-        tmp.innerHTML = data.content;
-        morphdom(content, tmp, {
-          childrenOnly: true,
-          onBeforeElUpdated: (from, to) => from.tagName === 'CODE' && from.classList.contains('hljs') && from.textContent === to.textContent ? false : true
-        });
-        highlightCode();
-        renderMermaid();
-        buildToc();
-        requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
-      };
-    }
-    connect();
   </script>
 </body>
 </html>

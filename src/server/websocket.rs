@@ -13,7 +13,7 @@ use tokio::{select, spawn};
 
 use super::state::{AppState, WsMessage};
 
-pub async fn handler(
+pub async fn upgrade(
     ws: WebSocketUpgrade,
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
@@ -25,7 +25,13 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     let mut rx = state.tx.subscribe();
 
     let content = state.content.read().await.clone();
-    let msg = to_string(&WsMessage { msg_type: "update", content: &content }).unwrap();
+    let path = state.file_path.display().to_string();
+    let msg = to_string(&WsMessage {
+        msg_type: "update",
+        path: &path,
+        content: &content,
+    })
+    .unwrap();
 
     if sender.send(Message::Text(msg.into())).await.is_err() {
         return;

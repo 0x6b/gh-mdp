@@ -63,7 +63,7 @@ pub fn render(path: &Path) -> String {
                 let base_slug = slugify(&heading_text);
                 let slug = if let Some(count) = slug_counts.get_mut(&base_slug) {
                     *count += 1;
-                    format!("{}-{}", base_slug, count)
+                    format!("{base_slug}-{count}")
                 } else {
                     slug_counts.insert(base_slug.clone(), 0);
                     base_slug

@@ -1,13 +1,20 @@
 mod assets;
+mod files;
 mod markdown;
 mod state;
+mod template;
+mod util;
 mod watcher;
 mod websocket;
 
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::Result;
-use assets::render_page;
 use axum::{
     Router,
     extract::State,
@@ -37,7 +44,8 @@ impl Server {
     }
 
     pub async fn run(self) -> Result<()> {
-        let listener = TcpListener::bind(SocketAddr::from((self.bind.parse::<std::net::IpAddr>()?, 0))).await?;
+        let listener =
+            TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
         let addr = listener.local_addr()?;
         let url = format!("http://{addr}");
         info!("Listening on {url}");
@@ -53,9 +61,11 @@ impl Server {
         });
 
         let app = Router::new()
-            .route("/", get(index_handler))
-            .route("/ws", get(websocket::handler))
-            .route("/assets/{path}", get(assets::handler))
+            .route("/", get(serve_index))
+            .route("/favicon.ico", get(assets::serve_favicon))
+            .route("/ws", get(websocket::upgrade))
+            .route("/assets/{path}", get(assets::serve_asset))
+            .route("/{*path}", get(files::serve_file))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|request: &Request<_>| {
@@ -77,7 +87,7 @@ impl Server {
     }
 }
 
-async fn index_handler(State(state): State<Arc<AppState>>) -> Html<String> {
+async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
     let content = state.content.read().await.clone();
-    Html(render_page(&state.file_path, &content))
+    Html(template::render_page(&state.file_path, &content))
 }
