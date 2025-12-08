@@ -10,10 +10,10 @@
   <link rel="stylesheet" href="/assets/highlight-github-dark.min.css" media="(prefers-color-scheme: dark)">
   <style>
     :root {
-      --bg: #f6f8fa; --card: #fff; --border: #d0d7de; --accent: #0969da;
+      --bg: #f6f8fa; --card: #fff; --border: #d0d7de; --accent: #0969da; --text: #1f2328; --text-muted: #656d76;
     }
     @media (prefers-color-scheme: dark) {
-      :root { --bg: #161b22; --card: #0d1117; --border: #30363d; --accent: #58a6ff; }
+      :root { --bg: #161b22; --card: #0d1117; --border: #30363d; --accent: #58a6ff; --text: #e6edf3; --text-muted: #848d97; }
       .hljs { background: #161b22 !important; }
     }
     * { box-sizing: border-box; }
@@ -26,9 +26,30 @@
     .copy-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
     .copy-btn:hover { background: var(--bg); color: inherit; }
     .copy-btn svg { width: 16px; height: 16px; }
-    .container { width: 90%; margin: 0 auto; padding: 32px 0; }
+    .layout { display: flex; width: 100%; max-width: 1400px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
+    .main-content { flex: 1; min-width: 0; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+    .markdown-body .anchor { scroll-margin-top: 70px; }
+    .toc-sidebar { width: 250px; flex-shrink: 0; }
+    .toc { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
+    .toc-title { color: var(--text-muted); margin-bottom: 12px; }
+    .toc-title svg { width: 16px; height: 16px; }
+    .toc-list { list-style: none; margin: 0; padding: 0; }
+    .toc-list li { margin: 0; }
+    .toc-list a { display: block; padding: 4px 0; font-size: 13px; color: var(--text-muted); text-decoration: none; border-left: 2px solid transparent; transition: color 0.15s, border-color 0.15s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .toc-list a:hover { color: var(--text); }
+    .toc-list a.active { color: var(--accent); border-left-color: var(--accent); }
+    .toc-list a[data-level="1"] { padding-left: 8px; font-weight: 500; }
+    .toc-list a[data-level="2"] { padding-left: 8px; }
+    .toc-list a[data-level="3"] { padding-left: 20px; }
+    .toc-list a[data-level="4"] { padding-left: 32px; }
+    .toc-list a[data-level="5"] { padding-left: 44px; }
+    .toc-list a[data-level="6"] { padding-left: 56px; }
+    @media (max-width: 1100px) {
+      .toc-sidebar { display: none; }
+      .layout { padding: 32px 16px; }
+    }
   </style>
 </head>
 <body>
@@ -39,7 +60,15 @@
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
     </button>
   </header>
-  <main class="container"><article class="markdown-body" id="content">{{content}}</article></main>
+  <div class="layout">
+    <main class="main-content"><article class="markdown-body" id="content">{{content}}</article></main>
+    <aside class="toc-sidebar">
+      <nav class="toc">
+        <div class="toc-title"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg></div>
+        <ul class="toc-list" id="toc-list"></ul>
+      </nav>
+    </aside>
+  </div>
   <script src="/assets/highlight.min.js"></script>
   <script src="/assets/morphdom.min.js"></script>
   <script src="/assets/mermaid.min.js"></script>
@@ -64,8 +93,67 @@
         }
       }
     };
+
+    // TOC generation
+    const buildToc = () => {
+      const tocList = $('#toc-list');
+      const headings = $$('#content h1, #content h2, #content h3, #content h4, #content h5, #content h6');
+      tocList.innerHTML = '';
+      headings.forEach(h => {
+        const anchor = h.querySelector('.anchor');
+        if (!anchor) return;
+        const id = anchor.id;
+        const level = parseInt(h.tagName[1]);
+        const li = document.createElement('li');
+        const a = document.createElement('a');
+        a.href = `#${id}`;
+        a.textContent = h.textContent;
+        a.dataset.level = level;
+        a.dataset.id = id;
+        a.onclick = e => {
+          e.preventDefault();
+          const target = document.getElementById(id);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth' });
+            history.pushState(null, '', `#${id}`);
+          }
+        };
+        li.appendChild(a);
+        tocList.appendChild(li);
+      });
+      updateActiveToc();
+    };
+
+    // Scroll spy for TOC
+    let tocLinks = [];
+    let headingPositions = [];
+    const updateActiveToc = () => {
+      tocLinks = [...$$('.toc-list a')];
+      headingPositions = tocLinks.map(a => {
+        const el = document.getElementById(a.dataset.id);
+        return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
+      });
+    };
+    const highlightActiveToc = () => {
+      const scrollPos = window.scrollY + 100;
+      let activeIdx = 0;
+      for (let i = headingPositions.length - 1; i >= 0; i--) {
+        if (scrollPos >= headingPositions[i]) { activeIdx = i; break; }
+      }
+      tocLinks.forEach((a, i) => a.classList.toggle('active', i === activeIdx));
+    };
+    let scrollTicking = false;
+    window.addEventListener('scroll', () => {
+      if (!scrollTicking) {
+        requestAnimationFrame(() => { highlightActiveToc(); scrollTicking = false; });
+        scrollTicking = true;
+      }
+    });
+    window.addEventListener('resize', () => requestAnimationFrame(updateActiveToc));
+
     highlightCode();
     renderMermaid();
+    buildToc();
     $('#copy-btn').onclick = () => navigator.clipboard.writeText($('#file-path').textContent);
     const findAnchor = () => {
       let best = null, bestOff = Infinity;
@@ -100,6 +188,7 @@
         });
         highlightCode();
         renderMermaid();
+        buildToc();
         requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
       };
     }
