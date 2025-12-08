@@ -5,7 +5,12 @@ mod state;
 mod watcher;
 mod websocket;
 
-use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::Result;
 use assets::render_page;
@@ -38,7 +43,8 @@ impl Server {
     }
 
     pub async fn run(self) -> Result<()> {
-        let listener = TcpListener::bind(SocketAddr::from((self.bind.parse::<std::net::IpAddr>()?, 0))).await?;
+        let listener =
+            TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
         let addr = listener.local_addr()?;
         let url = format!("http://{addr}");
         info!("Listening on {url}");

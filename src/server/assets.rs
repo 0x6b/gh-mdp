@@ -5,6 +5,8 @@ use axum::{
     http::{StatusCode, header::CONTENT_TYPE},
     response::IntoResponse,
 };
+use mime_guess::from_path;
+use tokio::fs::read;
 
 use super::state::AppState;
 
