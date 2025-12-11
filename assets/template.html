@@ -50,6 +50,104 @@
       .toc-sidebar { display: none; }
       .layout { padding: 32px 16px; }
     }
+
+    /* Mermaid diagram container */
+    .mermaid-container {
+      position: relative;
+      margin: 16px 0;
+    }
+    .mermaid-container .mermaid {
+      overflow-x: auto;
+    }
+    .mermaid-fullsize-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s, color 0.15s, background 0.15s;
+      z-index: 10;
+    }
+    .mermaid-container:hover .mermaid-fullsize-btn {
+      opacity: 1;
+    }
+    .mermaid-fullsize-btn:hover {
+      color: var(--text);
+      background: var(--bg);
+    }
+    .mermaid-fullsize-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Fullscreen modal */
+    .mermaid-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+    }
+    .mermaid-modal.active {
+      display: flex;
+    }
+    .mermaid-modal-content {
+      position: relative;
+      min-width: 90vw;
+      max-width: 95vw;
+      max-height: 95vh;
+      overflow: auto;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .mermaid-modal-content .mermaid {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mermaid-modal-content .mermaid svg {
+      max-width: none;
+      max-height: none;
+    }
+    .mermaid-modal-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+    }
+    .mermaid-modal-close:hover {
+      color: var(--text);
+      background: var(--border);
+    }
+    .mermaid-modal-close svg {
+      width: 16px;
+      height: 16px;
+    }
   </style>
   <script>
     // Connect WebSocket immediately in head - no dependencies
@@ -82,6 +180,15 @@
         <ul class="toc-list" id="toc-list"></ul>
       </nav>
     </aside>
+  </div>
+  <!-- Mermaid fullscreen modal -->
+  <div class="mermaid-modal" id="mermaid-modal">
+    <div class="mermaid-modal-content">
+      <button class="mermaid-modal-close" id="mermaid-modal-close" title="Close">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>
+      </button>
+      <div class="mermaid" id="mermaid-modal-diagram"></div>
+    </div>
   </div>
   <script src="/assets/morphdom.min.js"></script>
   <script>
@@ -138,15 +245,60 @@
         const id = `mermaid-${mermaidId++}`;
         try {
           const { svg } = await mermaid.render(id, definition);
+          // Create container with button
+          const container = document.createElement('div');
+          container.className = 'mermaid-container';
+          container.dataset.definition = definition;
+          // Create fullsize button
+          const btn = document.createElement('button');
+          btn.className = 'mermaid-fullsize-btn';
+          btn.title = 'Show full size';
+          btn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 1.06L2.56 7h10.88l-2.22-2.22a.75.75 0 011.06-1.06l3.5 3.5a.75.75 0 010 1.06l-3.5 3.5a.75.75 0 11-1.06-1.06l2.22-2.22H2.56l2.22 2.22a.75.75 0 11-1.06 1.06l-3.5-3.5a.75.75 0 010-1.06l3.5-3.5z"/></svg>';
+          btn.onclick = () => openMermaidModal(definition);
+          // Create mermaid div
           const div = document.createElement('div');
           div.className = 'mermaid';
           div.innerHTML = svg;
-          pre.replaceWith(div);
+          container.appendChild(btn);
+          container.appendChild(div);
+          pre.replaceWith(container);
         } catch (e) {
           console.error('Mermaid render error:', e);
         }
       }
     };
+
+    // Mermaid fullscreen modal
+    let modalMermaidId = 0;
+    const openMermaidModal = async (definition) => {
+      const modal = $('#mermaid-modal');
+      const diagramContainer = $('#mermaid-modal-diagram');
+      const id = `mermaid-modal-${modalMermaidId++}`;
+      try {
+        const { svg } = await mermaid.render(id, definition);
+        diagramContainer.innerHTML = svg;
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      } catch (e) {
+        console.error('Mermaid modal render error:', e);
+      }
+    };
+    const closeMermaidModal = () => {
+      const modal = $('#mermaid-modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+      $('#mermaid-modal-diagram').innerHTML = '';
+    };
+    // Modal event listeners
+    $('#mermaid-modal-close').onclick = closeMermaidModal;
+    $('#mermaid-modal').onclick = (e) => {
+      if (e.target === e.currentTarget) closeMermaidModal();
+    };
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && $('#mermaid-modal').classList.contains('active')) {
+        closeMermaidModal();
+      }
+    });
 
     // TOC generation
     var buildToc = () => {
