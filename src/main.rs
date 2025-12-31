@@ -9,7 +9,7 @@ use tracing_subscriber::{EnvFilter, fmt::layer, prelude::*, registry};
 #[derive(Parser)]
 #[command(about, version)]
 pub struct Args {
-    /// Markdown file or directory to preview (defaults to index.md or README.md)
+    /// Markdown file or directory to preview (defaults to ./index.md or ./README.md)
     pub file: Option<PathBuf>,
     /// Bind address
     #[arg(short, long, default_value = "127.0.0.1")]

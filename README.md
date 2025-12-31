@@ -37,7 +37,7 @@ A GitHub Flavored Markdown live preview server
 Usage: gh-mdp [OPTIONS] [FILE]
 
 Arguments:
-  [FILE]  Markdown file or directory to preview (defaults to index.md or README.md)
+  [FILE]  Markdown file or directory to preview (defaults to ./index.md or ./README.md)
 
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
