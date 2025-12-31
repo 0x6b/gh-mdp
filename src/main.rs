@@ -1,6 +1,6 @@
 mod args;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -9,6 +9,16 @@ use tracing::info;
 use tracing_subscriber::{EnvFilter, fmt::layer, prelude::*, registry};
 
 use crate::args::Args;
+
+fn resolve_markdown(dir: &Path, context: &str) -> Option<PathBuf> {
+    ["index.md", "README.md"].into_iter().find_map(|name| {
+        let path = dir.join(name);
+        path.exists().then(|| {
+            info!("{context}, using {name}");
+            path
+        })
+    })
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -20,35 +30,15 @@ async fn main() -> Result<()> {
     let Args { file, bind, no_open } = Args::parse();
 
     let file = match file {
-        Some(f) if f.is_dir() => {
-            let index = f.join("index.md");
-            let readme = f.join("README.md");
-            if index.exists() {
-                info!("Directory specified, using {}", index.display());
-                index.canonicalize().context("Failed to resolve path")?
-            } else if readme.exists() {
-                info!("Directory specified, using {}", readme.display());
-                readme.canonicalize().context("Failed to resolve path")?
-            } else {
-                bail!("No index.md or README.md found in directory: {}", f.display());
-            }
-        }
-        Some(f) if f.exists() => f.canonicalize().context("Failed to resolve path")?,
+        Some(f) if f.is_dir() => resolve_markdown(&f, "Directory specified")
+            .with_context(|| format!("No index.md or README.md in: {}", f.display()))?,
+        Some(f) if f.exists() => f,
         Some(f) => bail!("File not found: {}", f.display()),
-        None => {
-            let index = PathBuf::from("index.md");
-            let readme = PathBuf::from("README.md");
-            if index.exists() {
-                info!("No file specified, using index.md");
-                index.canonicalize().context("Failed to resolve path")?
-            } else if readme.exists() {
-                info!("No file specified, using README.md");
-                readme.canonicalize().context("Failed to resolve path")?
-            } else {
-                bail!("No file specified and no index.md or README.md found in current directory");
-            }
-        }
-    };
+        None => resolve_markdown(&PathBuf::from("."), "No file specified")
+            .context("No index.md or README.md found in current directory")?,
+    }
+    .canonicalize()
+    .context("Failed to resolve path")?;
 
     Server::try_new(file, &bind, !no_open)?.run().await
 }
