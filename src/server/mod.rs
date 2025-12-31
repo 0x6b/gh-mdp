@@ -28,7 +28,7 @@ use state::AppState;
 use template::render_page;
 use tokio::{net::TcpListener, spawn, sync::broadcast::channel};
 use tower_http::trace::TraceLayer;
-use tracing::{Span, info, info_span};
+use tracing::{info, info_span};
 use watcher::watch;
 
 pub struct Server {
@@ -39,16 +39,18 @@ pub struct Server {
 
 impl Server {
     pub fn try_new(file_path: PathBuf, bind: &str, open_browser: bool) -> Result<Self> {
-        let (tx, _rx) = channel(16);
-        let state = Arc::new(AppState::new(file_path, tx));
-        Ok(Self { state, bind: bind.to_string(), open_browser })
+        let (tx, _) = channel(16);
+        Ok(Self {
+            state: Arc::new(AppState::new(file_path, tx)),
+            bind: bind.into(),
+            open_browser,
+        })
     }
 
     pub async fn run(self) -> Result<()> {
         let listener =
             TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
-        let addr = listener.local_addr()?;
-        let url = format!("http://{addr}");
+        let url = format!("http://{}", listener.local_addr()?);
         info!("Listening on {url}");
         info!("Watching {}", self.state.file_path.display());
 
@@ -56,10 +58,7 @@ impl Server {
             let _ = that(&url);
         }
 
-        let watcher_state = self.state.clone();
-        spawn(async move {
-            watch(watcher_state).await;
-        });
+        spawn(watch(self.state.clone()));
 
         let app = Router::new()
             .route("/", get(serve_index))
@@ -69,26 +68,19 @@ impl Server {
             .route("/{*path}", get(files::serve_file))
             .layer(
                 TraceLayer::new_for_http()
-                    .make_span_with(|request: &Request<_>| {
-                        info_span!(
-                            "request",
-                            method = %request.method(),
-                            uri = %request.uri(),
-                        )
+                    .make_span_with(|req: &Request<_>| {
+                        info_span!("request", method = %req.method(), uri = %req.uri())
                     })
-                    .on_response(|response: &Response<_>, latency: Duration, _span: &Span| {
-                        info!(status = %response.status(), latency = ?latency, "response");
+                    .on_response(|res: &Response<_>, latency: Duration, _: &_| {
+                        info!(status = %res.status(), ?latency, "response");
                     }),
             )
             .with_state(self.state);
 
-        serve(listener, app).await?;
-
-        Ok(())
+        Ok(serve(listener, app).await?)
     }
 }
 
 async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
-    let content = state.content.read().await.clone();
-    Html(render_page(&state.file_path, &content))
+    Html(render_page(&state.file_path, &state.content.read().await))
 }
