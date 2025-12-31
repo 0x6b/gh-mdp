@@ -46,8 +46,14 @@ pub fn render(path: &Path) -> String {
                 let text = h.take().unwrap();
                 let base = slugify(&text);
                 let slug = match slug_counts.get_mut(&base) {
-                    Some(n) => { *n += 1; format!("{base}-{n}") }
-                    None => { slug_counts.insert(base.clone(), 0); base }
+                    Some(n) => {
+                        *n += 1;
+                        format!("{base}-{n}")
+                    }
+                    None => {
+                        slug_counts.insert(base.clone(), 0);
+                        base
+                    }
                 };
                 let anchor = format!("<a id=\"{slug}\" class=\"anchor\" href=\"#{slug}\"></a>");
                 vec![Event::Html(anchor.into()), event]

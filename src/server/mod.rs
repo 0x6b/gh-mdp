@@ -7,10 +7,23 @@ mod util;
 mod watcher;
 mod websocket;
 
-use std::{net::{IpAddr, SocketAddr}, path::PathBuf, sync::Arc, time::Duration};
+use std::{
+    net::{IpAddr, SocketAddr},
+    path::PathBuf,
+    sync::Arc,
+    time::Duration,
+};
 
 use anyhow::Result;
-use axum::{Router, extract::State, http::{Request, Response}, response::Html, routing::get, serve};
+use axum::{
+    Router,
+    extract::State,
+    http::{Request, Response},
+    response::Html,
+    routing::get,
+    serve,
+};
+use open::that;
 use state::AppState;
 use template::render_page;
 use tokio::{net::TcpListener, spawn, sync::broadcast::channel};
@@ -27,16 +40,23 @@ pub struct Server {
 impl Server {
     pub fn try_new(file_path: PathBuf, bind: &str, open_browser: bool) -> Result<Self> {
         let (tx, _) = channel(16);
-        Ok(Self { state: Arc::new(AppState::new(file_path, tx)), bind: bind.into(), open_browser })
+        Ok(Self {
+            state: Arc::new(AppState::new(file_path, tx)),
+            bind: bind.into(),
+            open_browser,
+        })
     }
 
     pub async fn run(self) -> Result<()> {
-        let listener = TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
+        let listener =
+            TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
         let url = format!("http://{}", listener.local_addr()?);
         info!("Listening on {url}");
         info!("Watching {}", self.state.file_path.display());
 
-        if self.open_browser { let _ = open::that(&url); }
+        if self.open_browser {
+            let _ = that(&url);
+        }
 
         spawn(watch(self.state.clone()));
 
