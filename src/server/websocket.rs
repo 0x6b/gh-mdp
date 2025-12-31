@@ -21,27 +21,27 @@ pub async fn upgrade(
 }
 
 async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
-    let (mut sender, mut receiver) = socket.split();
-    let mut rx = state.tx.subscribe();
+    let (mut tx, mut rx) = socket.split();
+    let mut broadcast = state.tx.subscribe();
 
     let content = state.content.read().await.clone();
     let path = state.file_path.display().to_string();
     let msg = to_string(&WsMessage { msg_type: "update", path: &path, content: &content }).unwrap();
 
-    if sender.send(Message::Text(msg.into())).await.is_err() {
+    if tx.send(Message::Text(msg.into())).await.is_err() {
         return;
     }
 
     let mut send_task = spawn(async move {
-        while let Ok(msg) = rx.recv().await {
-            if sender.send(Message::Text(msg.into())).await.is_err() {
+        while let Ok(msg) = broadcast.recv().await {
+            if tx.send(Message::Text(msg.into())).await.is_err() {
                 break;
             }
         }
     });
 
     let mut recv_task = spawn(async move {
-        while let Some(Ok(msg)) = receiver.next().await {
+        while let Some(Ok(msg)) = rx.next().await {
             if matches!(msg, Message::Close(_)) {
                 break;
             }

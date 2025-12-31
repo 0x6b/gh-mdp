@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{self, State},
+    extract::{Path, State},
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
-use extract::Path;
 use tokio::fs::read;
 
 use super::{
@@ -17,7 +16,7 @@ use super::{
 
 pub async fn serve_file(
     State(state): State<Arc<AppState>>,
-    extract::Path(path): Path<String>,
+    Path(path): Path<String>,
 ) -> impl IntoResponse {
     let Some(base_dir) = state.file_path.parent() else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
@@ -25,20 +24,16 @@ pub async fn serve_file(
 
     let resolved = match resolve_safe_path(base_dir, &path) {
         Ok(p) => p,
-        Err(status) => return status.into_response(),
+        Err(s) => return s.into_response(),
     };
 
-    // Render markdown files with template
     if resolved.extension().is_some_and(|ext| ext == "md") {
-        let content = render(&resolved);
-        return Html(render_page(&resolved, &content)).into_response();
+        return Html(render_page(&resolved, &render(&resolved))).into_response();
     }
 
-    // Read and serve static file
     let Ok(content) = read(&resolved).await else {
         return StatusCode::NOT_FOUND.into_response();
     };
 
-    let content_type = guess_content_type(&resolved, &content);
-    ([(CONTENT_TYPE, content_type)], content).into_response()
+    ([(CONTENT_TYPE, guess_content_type(&resolved, &content))], content).into_response()
 }
