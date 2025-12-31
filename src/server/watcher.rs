@@ -18,11 +18,7 @@ const DEBOUNCE_DURATION: Duration = Duration::from_millis(100);
 
 pub async fn watch(state: Arc<AppState>) {
     let (tx, rx) = channel();
-    let base_dir = state
-        .file_path
-        .parent()
-        .unwrap_or(&state.file_path)
-        .to_path_buf();
+    let base_dir = state.file_path.parent().unwrap_or(&state.file_path).to_path_buf();
 
     // Find all .md files respecting .gitignore
     let md_files: HashSet<PathBuf> = WalkBuilder::new(&base_dir)
@@ -33,13 +29,12 @@ pub async fn watch(state: Arc<AppState>) {
         .collect();
 
     // Collect unique parent directories
-    let dirs: HashSet<PathBuf> = md_files.iter().filter_map(|p| p.parent().map(|d| d.to_path_buf())).collect();
+    let dirs: HashSet<PathBuf> = md_files
+        .iter()
+        .filter_map(|p| p.parent().map(|d| d.to_path_buf()))
+        .collect();
 
-    info!(
-        "Watching {} markdown files in {} directories",
-        md_files.len(),
-        dirs.len()
-    );
+    info!("Watching {} markdown files in {} directories", md_files.len(), dirs.len());
 
     spawn(move || {
         let mut debouncer =

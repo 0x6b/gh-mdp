@@ -37,12 +37,8 @@ impl AppState {
             *content = html.clone();
         }
 
-        let msg = to_string(&WsMessage {
-            msg_type: "update",
-            path: &path,
-            content: &html,
-        })
-        .unwrap();
+        let msg =
+            to_string(&WsMessage { msg_type: "update", path: &path, content: &html }).unwrap();
         let _ = self.tx.send(msg);
     }
 }

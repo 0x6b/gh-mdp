@@ -25,6 +25,7 @@ use axum::{
 };
 use open::that;
 use state::AppState;
+use template::render_page;
 use tokio::{net::TcpListener, spawn, sync::broadcast::channel};
 use tower_http::trace::TraceLayer;
 use tracing::{Span, info, info_span};
@@ -89,5 +90,5 @@ impl Server {
 
 async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
     let content = state.content.read().await.clone();
-    Html(template::render_page(&state.file_path, &content))
+    Html(render_page(&state.file_path, &content))
 }

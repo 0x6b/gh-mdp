@@ -2,22 +2,28 @@ use std::sync::Arc;
 
 use axum::{
     extract::{self, State},
-    http::{header::CONTENT_TYPE, StatusCode},
+    http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
+use extract::Path;
 use tokio::fs::read;
 
-use super::{markdown::render, state::AppState, template::render_page, util};
+use super::{
+    markdown::render,
+    state::AppState,
+    template::render_page,
+    util::{guess_content_type, resolve_safe_path},
+};
 
 pub async fn serve_file(
     State(state): State<Arc<AppState>>,
-    extract::Path(path): extract::Path<String>,
+    extract::Path(path): Path<String>,
 ) -> impl IntoResponse {
     let Some(base_dir) = state.file_path.parent() else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 
-    let resolved = match util::resolve_safe_path(base_dir, &path) {
+    let resolved = match resolve_safe_path(base_dir, &path) {
         Ok(p) => p,
         Err(status) => return status.into_response(),
     };
@@ -33,6 +39,6 @@ pub async fn serve_file(
         return StatusCode::NOT_FOUND.into_response();
     };
 
-    let content_type = util::guess_content_type(&resolved, &content);
+    let content_type = guess_content_type(&resolved, &content);
     ([(CONTENT_TYPE, content_type)], content).into_response()
 }

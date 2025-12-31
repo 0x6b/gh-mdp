@@ -2,12 +2,16 @@ use std::sync::Arc;
 
 use axum::{
     extract::{self, State},
-    http::{header::CONTENT_TYPE, StatusCode},
+    http::{StatusCode, header::CONTENT_TYPE},
     response::IntoResponse,
 };
+use extract::Path;
 use tokio::fs::read;
 
-use super::{state::AppState, util};
+use super::{
+    state::AppState,
+    util::{guess_content_type, resolve_safe_path},
+};
 
 const FAVICON_SVG: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208 128"><rect width="198" height="118" x="5" y="5" ry="10" stroke="#000" stroke-width="10" fill="none"/><path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z"/></svg>"##;
 
@@ -24,7 +28,7 @@ pub async fn serve_favicon() -> impl IntoResponse {
 
 pub async fn serve_asset(
     State(state): State<Arc<AppState>>,
-    extract::Path(path): extract::Path<String>,
+    extract::Path(path): Path<String>,
 ) -> impl IntoResponse {
     // Check embedded assets first
     let embedded: Option<(&str, &[u8])> = match path.as_str() {
@@ -47,7 +51,7 @@ pub async fn serve_asset(
     };
 
     let assets_path = format!("assets/{path}");
-    let resolved = match util::resolve_safe_path(base_dir, &assets_path) {
+    let resolved = match resolve_safe_path(base_dir, &assets_path) {
         Ok(p) => p,
         Err(status) => return status.into_response(),
     };
@@ -56,6 +60,6 @@ pub async fn serve_asset(
         return StatusCode::NOT_FOUND.into_response();
     };
 
-    let content_type = util::guess_content_type(&resolved, &content);
+    let content_type = guess_content_type(&resolved, &content);
     ([(CONTENT_TYPE, content_type)], content).into_response()
 }
