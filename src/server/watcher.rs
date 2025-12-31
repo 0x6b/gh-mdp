@@ -13,14 +13,12 @@ use tracing::info;
 
 use super::state::AppState;
 
-/// Debounce duration for file system events to avoid excessive refreshes.
-const DEBOUNCE_DURATION: Duration = Duration::from_millis(100);
+const DEBOUNCE: Duration = Duration::from_millis(100);
 
 pub async fn watch(state: Arc<AppState>) {
     let (tx, rx) = channel();
     let base_dir = state.file_path.parent().unwrap_or(&state.file_path).to_path_buf();
 
-    // Find all .md files respecting .gitignore
     let md_files: HashSet<PathBuf> = WalkBuilder::new(&base_dir)
         .build()
         .filter_map(Result::ok)
@@ -28,37 +26,29 @@ pub async fn watch(state: Arc<AppState>) {
         .map(|e| e.into_path())
         .collect();
 
-    // Collect unique parent directories
-    let dirs: HashSet<PathBuf> = md_files
+    let dirs: HashSet<_> = md_files
         .iter()
-        .filter_map(|p| p.parent().map(|d| d.to_path_buf()))
+        .filter_map(|p| p.parent().map(PathBuf::from))
         .collect();
 
     info!("Watching {} markdown files in {} directories", md_files.len(), dirs.len());
 
     spawn(move || {
-        let mut debouncer =
-            new_debouncer(DEBOUNCE_DURATION, tx).expect("Failed to create debouncer");
-
-        // Watch each parent directory
+        let mut debouncer = new_debouncer(DEBOUNCE, tx).expect("Failed to create debouncer");
         for dir in &dirs {
             debouncer
                 .watcher()
                 .watch(dir, RecursiveMode::NonRecursive)
-                .expect("Failed to watch directory");
+                .expect("Failed to watch");
         }
-
         park();
     });
 
     let (notify_tx, mut notify_rx) = unbounded_channel();
-
     spawn(move || {
         while let Ok(Ok(events)) = rx.recv() {
-            for event in events {
-                if md_files.contains(&event.path) {
-                    let _ = notify_tx.send(event.path);
-                }
+            for e in events.into_iter().filter(|e| md_files.contains(&e.path)) {
+                let _ = notify_tx.send(e.path);
             }
         }
     });
