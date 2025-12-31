@@ -30,32 +30,24 @@ pub fn render(path: &Path) -> String {
     let parser = Parser::new_ext(&content, OPTIONS);
 
     let mut slug_counts: HashMap<String, usize> = HashMap::new();
-    let mut heading_text = String::new();
-    let mut in_heading = false;
+    let mut heading: Option<String> = None;
 
     let events: Vec<Event> = parser
-        .flat_map(|event| match &event {
-            Event::Start(Tag::Heading { .. }) => {
-                in_heading = true;
-                heading_text.clear();
+        .flat_map(|event| match (&event, &mut heading) {
+            (Event::Start(Tag::Heading { .. }), h) => {
+                *h = Some(String::new());
                 vec![event]
             }
-            Event::Text(t) | Event::Code(t) if in_heading => {
-                heading_text.push_str(t);
+            (Event::Text(t) | Event::Code(t), Some(text)) => {
+                text.push_str(t);
                 vec![event]
             }
-            Event::End(TagEnd::Heading(_)) => {
-                in_heading = false;
-                let base = slugify(&heading_text);
+            (Event::End(TagEnd::Heading(_)), h @ Some(_)) => {
+                let text = h.take().unwrap();
+                let base = slugify(&text);
                 let slug = match slug_counts.get_mut(&base) {
-                    Some(n) => {
-                        *n += 1;
-                        format!("{base}-{n}")
-                    }
-                    None => {
-                        slug_counts.insert(base.clone(), 0);
-                        base
-                    }
+                    Some(n) => { *n += 1; format!("{base}-{n}") }
+                    None => { slug_counts.insert(base.clone(), 0); base }
                 };
                 let anchor = format!("<a id=\"{slug}\" class=\"anchor\" href=\"#{slug}\"></a>");
                 vec![Event::Html(anchor.into()), event]
