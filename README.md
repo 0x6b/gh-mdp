@@ -8,7 +8,15 @@ A GitHub Flavored Markdown live preview server that:
 - Serves relative links (images, files) from the markdown's directory
 - Renders linked markdown files with the same template
 - Integrates all resources into a single binary (no internet connection required)
+- Supports in-browser editing with [OverType](https://overtype.dev/)
 - Can be used as a `gh` extension
+
+## Keyboard Shortcuts
+
+| Key      | Action                      |
+| -------- | --------------------------- |
+| `e`      | Enter edit mode             |
+| `Escape` | Return to preview mode      |
 
 ## Installation
 
@@ -62,6 +70,7 @@ The third-party assets are downloaded at build time and embedded into the final 
 | [highlight.js](https://highlightjs.org/)                                   | BSD-3-Clause | [LICENSE](https://github.com/highlightjs/highlight.js/blob/main/LICENSE)         |
 | [mermaid](https://mermaid.js.org/)                                         | MIT          | [LICENSE](https://github.com/mermaid-js/mermaid/blob/develop/LICENSE)            |
 | [morphdom](https://github.com/patrick-steele-idem/morphdom)                | MIT          | [LICENSE](https://github.com/patrick-steele-idem/morphdom/blob/master/LICENSE)   |
+| [OverType](https://overtype.dev/)                                          | MIT          | [LICENSE](https://github.com/panphora/overtype/blob/main/LICENSE)                |
 
 The favicon and header icon use the [Markdown mark](https://commons.wikimedia.org/wiki/File:Markdown-mark.svg) from Wikimedia Commons (CC0/Public Domain).
 

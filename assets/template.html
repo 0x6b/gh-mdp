@@ -23,14 +23,33 @@
     @media (prefers-color-scheme: dark) { .header-icon { color: #fff; } }
     .header-title { font-size: 14px; font-weight: 600; color: #000; }
     @media (prefers-color-scheme: dark) { .header-title { color: #fff; } }
-    .copy-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
-    .copy-btn:hover { background: var(--bg); color: inherit; }
-    .copy-btn svg { width: 16px; height: 16px; }
+    .copy-btn, .mode-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
+    .copy-btn:hover, .mode-btn:hover { background: var(--bg); color: inherit; }
+    .copy-btn svg, .mode-btn svg { width: 16px; height: 16px; }
+    .mode-btn.active { color: var(--accent); background: var(--bg); }
+    .save-status { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+    .save-status.saving { color: var(--accent); }
+    .save-status.saved { color: #2da44e; }
+    .save-status.error { color: #cf222e; }
     .layout { display: flex; width: 100%; max-width: 1400px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
     .main-content { flex: 1; min-width: 0; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .anchor { scroll-margin-top: 70px; }
+    .editor-container { display: none; height: calc(100vh - 140px); }
+    .editor-container.active { display: block; }
+    /* OverType container styling */
+    .editor-container > div {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      height: 100% !important;
+      min-height: 100% !important;
+    }
+    .editor-container textarea {
+      height: 100% !important;
+      min-height: 100% !important;
+    }
     .toc-sidebar { width: 250px; flex-shrink: 0; }
     .toc { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
     .toc-title { color: var(--text-muted); margin-bottom: 12px; }
@@ -171,9 +190,16 @@
     <button class="copy-btn" id="copy-btn" title="Copy path">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
     </button>
+    <button class="mode-btn" id="mode-btn" title="Edit">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
+    </button>
+    <span class="save-status" id="save-status"></span>
   </header>
   <div class="layout">
-    <main class="main-content"><article class="markdown-body" id="content">{{content}}</article></main>
+    <main class="main-content">
+      <article class="markdown-body" id="content">{{content}}</article>
+      <div class="editor-container" id="editor"></div>
+    </main>
     <aside class="toc-sidebar">
       <nav class="toc">
         <div class="toc-title"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg></div>
@@ -193,6 +219,17 @@
   <script src="/assets/morphdom.min.js"></script>
   <script>
     const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
+    const filePath = $('#file-path').textContent;
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Edit mode state
+    let currentMode = 'preview';
+    let editorInitialized = false;
+    let editor = null;
+    let lastLocalEdit = 0;
+    let saveTimeout = null;
+    let isSaving = false;
+
     const findAnchor = () => {
       let best = null, bestOff = Infinity;
       for (const el of $$('#content h1,#content h2,#content h3,#content h4,#content p,#content li,#content pre')) {
@@ -209,11 +246,17 @@
       }
       return false;
     };
+
     // Handle WebSocket messages (called from head script)
     var handleWsMessage = msg => {
       const data = JSON.parse(msg);
       if (data.type !== 'update') return;
-      if (data.path !== $('#file-path').textContent) return;
+      if (data.path !== filePath) return;
+
+      // In edit mode, skip updates within 2s of local edit (infinite loop prevention)
+      if (currentMode === 'edit' && Date.now() - lastLocalEdit < 2000) return;
+
+      // Update preview
       const content = $('#content');
       const anchor = findAnchor(), scrollY = window.scrollY;
       const tmp = document.createElement('div');
@@ -225,12 +268,172 @@
       if (typeof hljs !== 'undefined') $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
       if (typeof renderMermaid === 'function') renderMermaid();
       if (typeof buildToc === 'function') buildToc();
-      requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
+      if (currentMode === 'preview') {
+        requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
+      }
+
+      // Update editor content if initialized and in edit mode
+      if (editorInitialized && editor && currentMode === 'edit') {
+        // Fetch fresh markdown and update editor if content differs
+        fetch('/raw').then(r => r.text()).then(markdown => {
+          if (editor[0].getValue() !== markdown) {
+            editor[0].setValue(markdown);
+          }
+        });
+      }
     };
+
     // Process any queued messages and mark ready
     wsReady = true;
     wsQueue.forEach(handleWsMessage);
     wsQueue = [];
+
+    // Mode toggle
+    const modeBtn = $('#mode-btn');
+    const updateModeButton = (mode) => {
+      if (mode === 'edit') {
+        modeBtn.title = 'Preview';
+        modeBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.824.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>';
+        modeBtn.classList.add('active');
+      } else {
+        modeBtn.title = 'Edit';
+        modeBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>';
+        modeBtn.classList.remove('active');
+      }
+    };
+
+    const updateStatus = (cls, text) => {
+      const el = $('#save-status');
+      el.className = 'save-status ' + cls;
+      el.textContent = text;
+    };
+
+    const saveContent = async (content) => {
+      if (isSaving) return;
+      isSaving = true;
+      updateStatus('saving', 'Saving...');
+      try {
+        const res = await fetch('/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content })
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateStatus('saved', 'Saved');
+          setTimeout(() => updateStatus('', ''), 2000);
+        } else {
+          updateStatus('error', 'Error: ' + data.error);
+        }
+      } catch (e) {
+        updateStatus('error', 'Error: ' + e.message);
+      } finally {
+        isSaving = false;
+      }
+    };
+
+    const debounce = (fn, ms) => {
+      let timeout;
+      return (...args) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => fn(...args), ms);
+      };
+    };
+
+    const debouncedSave = debounce(saveContent, 1000);
+
+    const switchToEdit = async () => {
+      // Show editor container first (needed for OverType to calculate dimensions)
+      $('#content').style.display = 'none';
+      $('#editor').classList.add('active');
+
+      if (!editorInitialized) {
+        // Load OverType script dynamically
+        const script = document.createElement('script');
+        script.src = '/assets/overtype.min.js';
+        script.onload = async () => {
+          const res = await fetch('/raw');
+          const markdown = await res.text();
+          editor = new OverType('#editor', {
+            value: markdown,
+            theme: prefersDark ? 'cave' : 'solar',
+            toolbar: true,
+            autoResize: false,
+            onChange: (value) => {
+              lastLocalEdit = Date.now();
+              debouncedSave(value);
+            },
+            showStats: true
+          });
+          editorInitialized = true;
+          finishSwitchToEdit();
+        };
+        document.head.appendChild(script);
+      } else {
+        // Refresh content before switching
+        const res = await fetch('/raw');
+        const markdown = await res.text();
+        if (editor[0].getValue() !== markdown) {
+          editor[0].setValue(markdown);
+        }
+        finishSwitchToEdit();
+      }
+    };
+
+    const finishSwitchToEdit = () => {
+      updateModeButton('edit');
+      currentMode = 'edit';
+      // Focus the editor textarea
+      if (editor && editor[0]) {
+        editor[0].focus();
+      }
+    };
+
+    const switchToPreview = async () => {
+      // Fetch fresh rendered content before showing preview
+      const res = await fetch('/');
+      const html = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const newContent = doc.getElementById('content');
+      if (newContent) {
+        morphdom($('#content'), newContent, { childrenOnly: true });
+        if (typeof hljs !== 'undefined') $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
+        if (typeof renderMermaid === 'function') renderMermaid();
+        if (typeof buildToc === 'function') buildToc();
+      }
+      $('#content').style.display = 'block';
+      $('#editor').classList.remove('active');
+      updateModeButton('preview');
+      currentMode = 'preview';
+    };
+
+    modeBtn.onclick = () => {
+      if (currentMode === 'preview') {
+        switchToEdit();
+      } else {
+        switchToPreview();
+      }
+    };
+
+    // Theme switching
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (editorInitialized && editor) {
+        editor[0].setTheme(e.matches ? 'cave' : 'solar');
+      }
+    });
+
+    // Keyboard shortcuts for mode switching
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && currentMode === 'edit') {
+        e.preventDefault();
+        switchToPreview();
+      }
+      if (e.key === 'e' && currentMode === 'preview' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        switchToEdit();
+      }
+    });
   </script>
   <script src="/assets/highlight.min.js"></script>
   <script src="/assets/mermaid.min.js"></script>

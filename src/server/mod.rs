@@ -16,14 +16,15 @@ use std::{
 
 use anyhow::Result;
 use axum::{
-    Router,
+    Json, Router,
     extract::State,
-    http::{Request, Response},
-    response::Html,
-    routing::get,
+    http::{Request, Response, header::CONTENT_TYPE},
+    response::{Html, IntoResponse},
+    routing::{get, post},
     serve,
 };
 use open::that;
+use serde::{Deserialize, Serialize};
 use state::AppState;
 use template::render_page;
 use tokio::{net::TcpListener, spawn, sync::broadcast::channel};
@@ -62,6 +63,8 @@ impl Server {
 
         let app = Router::new()
             .route("/", get(serve_index))
+            .route("/raw", get(serve_raw))
+            .route("/save", post(save_markdown))
             .route("/favicon.ico", get(assets::serve_favicon))
             .route("/ws", get(websocket::upgrade))
             .route("/assets/{path}", get(assets::serve_asset))
@@ -83,4 +86,31 @@ impl Server {
 
 async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
     Html(render_page(&state.file_path, &state.content.read().await))
+}
+
+async fn serve_raw(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+    let markdown = state.markdown.read().await;
+    ([(CONTENT_TYPE, "text/plain; charset=utf-8")], markdown.clone())
+}
+
+#[derive(Deserialize)]
+struct SaveRequest {
+    content: String,
+}
+
+#[derive(Serialize)]
+struct SaveResponse {
+    success: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    error: Option<String>,
+}
+
+async fn save_markdown(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<SaveRequest>,
+) -> Json<SaveResponse> {
+    match state.save(&payload.content).await {
+        Ok(()) => Json(SaveResponse { success: true, error: None }),
+        Err(e) => Json(SaveResponse { success: false, error: Some(e.to_string()) }),
+    }
 }
