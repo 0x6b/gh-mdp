@@ -34,6 +34,8 @@ const ASSETS: &[(&str, &str)] = &[
     ),
     ("https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js", "mermaid.min.js"),
     ("https://raw.githubusercontent.com/mermaid-js/mermaid/develop/LICENSE", "LICENSE-mermaid"),
+    ("https://unpkg.com/overtype@2.1.1/dist/overtype.min.js", "overtype.min.js"),
+    ("https://raw.githubusercontent.com/panphora/overtype/main/LICENSE", "LICENSE-overtype"),
 ];
 
 fn main() -> Result<(), Box<dyn Error>> {

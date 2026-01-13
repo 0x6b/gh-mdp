@@ -29,6 +29,7 @@ const EMBEDDED: &[(&str, &str, &[u8])] = &[
     ("highlight.min.js", "text/javascript", include_bytes!("../../assets/highlight.min.js")),
     ("morphdom.min.js", "text/javascript", include_bytes!("../../assets/morphdom.min.js")),
     ("mermaid.min.js", "text/javascript", include_bytes!("../../assets/mermaid.min.js")),
+    ("overtype.min.js", "text/javascript", include_bytes!("../../assets/overtype.min.js")),
 ];
 
 pub async fn serve_favicon() -> impl IntoResponse {
