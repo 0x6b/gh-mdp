@@ -13,10 +13,10 @@ A GitHub Flavored Markdown live preview server that:
 
 ## Keyboard Shortcuts
 
-| Key      | Action                      |
-| -------- | --------------------------- |
-| `e`      | Enter edit mode             |
-| `Escape` | Return to preview mode      |
+| Key                         | Action                 |
+| --------------------------- | ---------------------- |
+| `e`                         | Enter edit mode        |
+| `Escape` / `Cmd/Ctrl+Enter` | Return to preview mode |
 
 ## Installation
 

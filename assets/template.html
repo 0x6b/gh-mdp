@@ -425,7 +425,7 @@
 
     // Keyboard shortcuts for mode switching
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && currentMode === 'edit') {
+      if (currentMode === 'edit' && (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey)))) {
         e.preventDefault();
         switchToPreview();
       }
