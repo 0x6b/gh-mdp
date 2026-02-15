@@ -31,6 +31,7 @@ pub fn render(path: &Path) -> String {
 
     let mut slug_counts: HashMap<String, usize> = HashMap::new();
     let mut heading: Option<String> = None;
+    let mut task_index: usize = 0;
 
     let events: Vec<Event> = parser
         .flat_map(|event| match (&event, &mut heading) {
@@ -57,6 +58,15 @@ pub fn render(path: &Path) -> String {
                 };
                 let anchor = format!("<a id=\"{slug}\" class=\"anchor\" href=\"#{slug}\"></a>");
                 vec![Event::Html(anchor.into()), event]
+            }
+            (Event::TaskListMarker(checked), _) => {
+                let i = task_index;
+                task_index += 1;
+                let c = if *checked { " checked=\"\"" } else { "" };
+                let html = format!(
+                    "<input type=\"checkbox\" data-task-index=\"{i}\"{c}/>\n"
+                );
+                vec![Event::Html(html.into())]
             }
             _ => vec![event],
         })

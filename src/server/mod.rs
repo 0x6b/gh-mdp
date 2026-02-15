@@ -65,6 +65,7 @@ impl Server {
             .route("/", get(serve_index))
             .route("/raw", get(serve_raw))
             .route("/save", post(save_markdown))
+            .route("/toggle-task", post(toggle_task))
             .route("/favicon.ico", get(assets::serve_favicon))
             .route("/ws", get(websocket::upgrade))
             .route("/assets/{path}", get(assets::serve_asset))
@@ -110,6 +111,21 @@ async fn save_markdown(
     Json(payload): Json<SaveRequest>,
 ) -> Json<SaveResponse> {
     match state.save(&payload.content).await {
+        Ok(()) => Json(SaveResponse { success: true, error: None }),
+        Err(e) => Json(SaveResponse { success: false, error: Some(e.to_string()) }),
+    }
+}
+
+#[derive(Deserialize)]
+struct ToggleTaskRequest {
+    index: usize,
+}
+
+async fn toggle_task(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<ToggleTaskRequest>,
+) -> Json<SaveResponse> {
+    match state.toggle_task(payload.index).await {
         Ok(()) => Json(SaveResponse { success: true, error: None }),
         Err(e) => Json(SaveResponse { success: false, error: Some(e.to_string()) }),
     }

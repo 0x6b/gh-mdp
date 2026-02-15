@@ -1,6 +1,6 @@
 use std::{
     fs::read_to_string,
-    io::Result,
+    io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
@@ -89,5 +89,53 @@ impl AppState {
         );
 
         Ok(())
+    }
+
+    pub async fn toggle_task(&self, index: usize) -> Result<()> {
+        let markdown = self.markdown.read().await.clone();
+        let mut task_count = 0;
+        let mut result = String::with_capacity(markdown.len());
+        let mut toggled = false;
+
+        for line in markdown.lines() {
+            let trimmed = line.trim_start();
+            let is_task = (trimmed.starts_with("- [ ] ") || trimmed.starts_with("- [x] "))
+                || (trimmed.starts_with("* [ ] ") || trimmed.starts_with("* [x] "));
+
+            if is_task {
+                if task_count == index {
+                    let indent = &line[..line.len() - trimmed.len()];
+                    let bullet = &trimmed[..2];
+                    let rest = &trimmed[6..];
+                    let marker = if trimmed[3..4].eq_ignore_ascii_case("x") {
+                        "[ ] "
+                    } else {
+                        "[x] "
+                    };
+                    result.push_str(indent);
+                    result.push_str(bullet);
+                    result.push_str(marker);
+                    result.push_str(rest);
+                    toggled = true;
+                } else {
+                    result.push_str(line);
+                }
+                task_count += 1;
+            } else {
+                result.push_str(line);
+            }
+            result.push('\n');
+        }
+
+        if !toggled {
+            return Err(Error::new(ErrorKind::NotFound, "task item not found"));
+        }
+
+        // Trim trailing newline if original didn't end with one
+        if !markdown.ends_with('\n') {
+            result.pop();
+        }
+
+        self.save(&result).await
     }
 }
