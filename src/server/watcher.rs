@@ -1,12 +1,10 @@
 use std::{
-    collections::HashSet,
-    path::PathBuf,
     sync::{Arc, mpsc::channel},
     thread::{park, spawn},
     time::Duration,
 };
 
-use ignore::WalkBuilder;
+use ignore::gitignore::Gitignore;
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
@@ -19,36 +17,40 @@ pub async fn watch(state: Arc<AppState>) {
     let (tx, rx) = channel();
     let base_dir = state.file_path.parent().unwrap_or(&state.file_path).to_path_buf();
 
-    let md_files: HashSet<PathBuf> = WalkBuilder::new(&base_dir)
-        .build()
-        .filter_map(Result::ok)
-        .filter(|e| e.path().extension().is_some_and(|ext| ext == "md"))
-        .map(|e| e.into_path())
-        .collect();
+    let gitignore = {
+        let gitignore_path = base_dir.join(".gitignore");
+        if gitignore_path.exists() {
+            let (gi, _) = Gitignore::new(&gitignore_path);
+            gi
+        } else {
+            Gitignore::empty()
+        }
+    };
 
-    let dirs: HashSet<_> = md_files
-        .iter()
-        .filter_map(|p| p.parent().map(PathBuf::from))
-        .collect();
+    info!("Watching for markdown changes in {}", base_dir.display());
 
-    info!("Watching {} markdown files in {} directories", md_files.len(), dirs.len());
-
-    spawn(move || {
-        let mut debouncer = new_debouncer(DEBOUNCE, tx).expect("Failed to create debouncer");
-        for dir in &dirs {
+    spawn({
+        let base_dir = base_dir.clone();
+        move || {
+            let mut debouncer = new_debouncer(DEBOUNCE, tx).expect("Failed to create debouncer");
             debouncer
                 .watcher()
-                .watch(dir, RecursiveMode::NonRecursive)
+                .watch(&base_dir, RecursiveMode::Recursive)
                 .expect("Failed to watch");
+            park();
         }
-        park();
     });
 
     let (notify_tx, mut notify_rx) = unbounded_channel();
     spawn(move || {
         while let Ok(Ok(events)) = rx.recv() {
-            for e in events.into_iter().filter(|e| md_files.contains(&e.path)) {
-                let _ = notify_tx.send(e.path);
+            for e in events {
+                let is_md = e.path.extension().is_some_and(|ext| ext == "md");
+                let is_ignored =
+                    gitignore.matched_path_or_any_parents(&e.path, false).is_ignore();
+                if is_md && !is_ignored {
+                    let _ = notify_tx.send(e.path);
+                }
             }
         }
     });
