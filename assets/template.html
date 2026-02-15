@@ -268,6 +268,7 @@
       if (typeof hljs !== 'undefined') $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
       if (typeof renderMermaid === 'function') renderMermaid();
       if (typeof buildToc === 'function') buildToc();
+      if (typeof bindTaskCheckboxes === 'function') bindTaskCheckboxes();
       if (currentMode === 'preview') {
         requestAnimationFrame(() => { if (!restoreAnchor(anchor)) window.scrollTo(0, scrollY); });
       }
@@ -401,6 +402,7 @@
         if (typeof hljs !== 'undefined') $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
         if (typeof renderMermaid === 'function') renderMermaid();
         if (typeof buildToc === 'function') buildToc();
+        if (typeof bindTaskCheckboxes === 'function') bindTaskCheckboxes();
       }
       $('#content').style.display = 'block';
       $('#editor').classList.remove('active');
@@ -560,9 +562,42 @@
     });
     window.addEventListener('resize', () => requestAnimationFrame(updateActiveToc));
 
+    // Task list checkbox toggling
+    var bindTaskCheckboxes = () => {
+      $$('#content input[type="checkbox"][data-task-index]').forEach(cb => {
+        cb.disabled = false;
+        const li = cb.closest('li');
+        if (!li) return;
+        li.style.cursor = 'pointer';
+        const toggle = async (e) => {
+          // Don't toggle when clicking links inside the task item
+          if (e.target.closest('a')) return;
+          e.preventDefault();
+          cb.disabled = true;
+          li.style.pointerEvents = 'none';
+          try {
+            const res = await fetch('/toggle-task', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ index: parseInt(cb.dataset.taskIndex) })
+            });
+            const data = await res.json();
+            if (!data.success) console.error('Toggle failed:', data.error);
+          } catch (err) {
+            console.error('Toggle error:', err);
+          } finally {
+            cb.disabled = false;
+            li.style.pointerEvents = '';
+          }
+        };
+        li.onclick = toggle;
+      });
+    };
+
     highlightCode();
     renderMermaid();
     buildToc();
+    bindTaskCheckboxes();
     $('#copy-btn').onclick = async () => {
       const btn = $('#copy-btn');
       const original = btn.innerHTML;
