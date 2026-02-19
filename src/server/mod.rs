@@ -29,7 +29,7 @@ use state::AppState;
 use template::render_page;
 use tokio::{net::TcpListener, spawn, sync::broadcast::channel};
 use tower_http::trace::TraceLayer;
-use tracing::{info, info_span};
+use tracing::{debug, debug_span, info};
 use watcher::watch;
 
 pub struct Server {
@@ -73,10 +73,10 @@ impl Server {
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|req: &Request<_>| {
-                        info_span!("request", method = %req.method(), uri = %req.uri())
+                        debug_span!("request", method = %req.method(), uri = %req.uri())
                     })
                     .on_response(|res: &Response<_>, latency: Duration, _: &_| {
-                        info!(status = %res.status(), ?latency, "response");
+                        debug!(status = %res.status(), ?latency, "response");
                     }),
             )
             .with_state(self.state);
