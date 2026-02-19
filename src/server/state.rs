@@ -107,11 +107,8 @@ impl AppState {
                     let indent = &line[..line.len() - trimmed.len()];
                     let bullet = &trimmed[..2];
                     let rest = &trimmed[6..];
-                    let marker = if trimmed[3..4].eq_ignore_ascii_case("x") {
-                        "[ ] "
-                    } else {
-                        "[x] "
-                    };
+                    let marker =
+                        if trimmed[3..4].eq_ignore_ascii_case("x") { "[ ] " } else { "[x] " };
                     result.push_str(indent);
                     result.push_str(bullet);
                     result.push_str(marker);

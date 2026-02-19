@@ -63,9 +63,7 @@ pub fn render(path: &Path) -> String {
                 let i = task_index;
                 task_index += 1;
                 let c = if *checked { " checked=\"\"" } else { "" };
-                let html = format!(
-                    "<input type=\"checkbox\" data-task-index=\"{i}\"{c}/>\n"
-                );
+                let html = format!("<input type=\"checkbox\" data-task-index=\"{i}\"{c}/>\n");
                 vec![Event::Html(html.into())]
             }
             _ => vec![event],

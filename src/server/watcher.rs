@@ -46,8 +46,7 @@ pub async fn watch(state: Arc<AppState>) {
         while let Ok(Ok(events)) = rx.recv() {
             for e in events {
                 let is_md = e.path.extension().is_some_and(|ext| ext == "md");
-                let is_ignored =
-                    gitignore.matched_path_or_any_parents(&e.path, false).is_ignore();
+                let is_ignored = gitignore.matched_path_or_any_parents(&e.path, false).is_ignore();
                 if is_md && !is_ignored {
                     let _ = notify_tx.send(e.path);
                 }
