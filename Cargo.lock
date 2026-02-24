@@ -619,7 +619,7 @@ dependencies = [
 
 [[package]]
 name = "gh-mdp"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "axum",
