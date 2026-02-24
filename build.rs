@@ -19,7 +19,7 @@ const ASSETS: &[(&str, &str)] = &[
         "https://raw.githubusercontent.com/highlightjs/highlight.js/main/LICENSE",
         "LICENSE-highlight.js",
     ),
-    ("https://unpkg.com/morphdom@2.7.7/dist/morphdom-umd.min.js", "morphdom.min.js"),
+    ("https://cdn.jsdelivr.net/npm/morphdom@2.7.7/dist/morphdom-umd.min.js", "morphdom.min.js"),
     (
         "https://raw.githubusercontent.com/patrick-steele-idem/morphdom/master/LICENSE",
         "LICENSE-morphdom",
@@ -34,7 +34,7 @@ const ASSETS: &[(&str, &str)] = &[
     ),
     ("https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js", "mermaid.min.js"),
     ("https://raw.githubusercontent.com/mermaid-js/mermaid/develop/LICENSE", "LICENSE-mermaid"),
-    ("https://unpkg.com/overtype@2.1.1/dist/overtype.min.js", "overtype.min.js"),
+    ("https://cdn.jsdelivr.net/npm/overtype@2.1.1/dist/overtype.min.js", "overtype.min.js"),
     ("https://raw.githubusercontent.com/panphora/overtype/main/LICENSE", "LICENSE-overtype"),
 ];
 
