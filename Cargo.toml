@@ -40,6 +40,7 @@ clap = { version = "4.5.59", features = ["derive"] }
 # Ser/deserialization
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
+serde_yaml = "0.9"
 
 # Open URL
 open = "5.3.3"
