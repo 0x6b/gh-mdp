@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs::read_to_string, path::Path, time::Instant};
 
 use pulldown_cmark::{Event, MetadataBlockKind, Options, Parser, Tag, TagEnd, html::push_html};
+use serde_yaml::{Value, from_str};
 use tracing::info;
 
 const OPTIONS: Options = Options::ENABLE_GFM
@@ -29,7 +30,7 @@ fn escape_html(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
-fn yaml_value_to_html(value: &serde_yaml::Value) -> String {
+fn yaml_value_to_html(value: &Value) -> String {
     match value {
         serde_yaml::Value::Null => String::new(),
         serde_yaml::Value::Bool(b) => format!("<div>{b}</div>"),
@@ -66,7 +67,7 @@ fn yaml_value_to_html(value: &serde_yaml::Value) -> String {
 }
 
 fn render_front_matter(yaml: &str) -> String {
-    let value: serde_yaml::Value = match serde_yaml::from_str(yaml) {
+    let value: Value = match from_str(yaml) {
         Ok(v) => v,
         Err(_) => return String::new(),
     };
