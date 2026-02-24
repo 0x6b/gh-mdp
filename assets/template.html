@@ -172,9 +172,16 @@
     // Connect WebSocket immediately in head - no dependencies
     var wsQueue = [];
     var wsReady = false;
+    var wsRetries = 0;
     function connect() {
       const ws = new WebSocket(`ws://${location.host}/ws`);
-      ws.onclose = () => setTimeout(connect, 2000);
+      ws.onopen = () => { wsRetries = 0; };
+      ws.onclose = () => {
+        if (wsRetries >= 20) return;
+        const delay = Math.min(1000 * Math.pow(2, wsRetries), 30000);
+        wsRetries++;
+        setTimeout(connect, delay);
+      };
       ws.onmessage = e => {
         if (wsReady) handleWsMessage(e.data);
         else wsQueue.push(e.data);
