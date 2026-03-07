@@ -467,6 +467,7 @@
       if (editorInitialized && editor) {
         editor[0].setTheme(e.matches ? 'cave' : 'solar');
       }
+      if (typeof reRenderMermaid === 'function') reRenderMermaid();
     });
 
     // Keyboard shortcuts for mode switching
@@ -485,7 +486,8 @@
   <script src="/assets/mermaid.min.js"></script>
   <script>
     const highlightCode = () => $$('pre code:not(.hljs):not(.language-mermaid)').forEach(b => hljs.highlightElement(b));
-    mermaid.initialize({ startOnLoad: false, theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default' });
+    const getMermaidTheme = () => window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default';
+    mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
     let mermaidId = 0;
     var renderMermaid = async () => {
       for (const code of $$('pre code.language-mermaid')) {
@@ -513,6 +515,23 @@
           pre.replaceWith(container);
         } catch (e) {
           console.error('Mermaid render error:', e);
+        }
+      }
+    };
+
+    // Re-render mermaid diagrams on theme change
+    var reRenderMermaid = async () => {
+      mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
+      for (const container of $$('.mermaid-container')) {
+        const definition = container.dataset.definition;
+        const id = `mermaid-${mermaidId++}`;
+        try {
+          const { svg } = await mermaid.render(id, definition);
+          const mermaidDiv = container.querySelector('.mermaid');
+          mermaidDiv.replaceChildren(); // clear safely
+          mermaidDiv.insertAdjacentHTML('afterbegin', svg); // svg from mermaid.render(), not user input
+        } catch (e) {
+          console.error('Mermaid re-render error:', e);
         }
       }
     };
