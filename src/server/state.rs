@@ -28,23 +28,25 @@ fn task_bullet_len(trimmed: &str) -> usize {
     let checkbox = |s: &str| s.starts_with("[ ] ") || s.starts_with("[x] ") || s.starts_with("[X] ");
 
     // Unordered: "- ", "* ", "+ " followed by checkbox
-    if let Some(rest) = trimmed.strip_prefix("- ")
+    if let Some(rest) = trimmed
+        .strip_prefix("- ")
         .or_else(|| trimmed.strip_prefix("* "))
         .or_else(|| trimmed.strip_prefix("+ "))
+        && checkbox(rest)
     {
-        if checkbox(rest) {
-            return 2; // "- " / "* " / "+ "
-        }
+        return 2; // "- " / "* " / "+ "
     }
 
     // Ordered: digits followed by ". " or ") " then checkbox
     let digit_end = trimmed.find(|c: char| !c.is_ascii_digit()).unwrap_or(0);
     if digit_end > 0 {
         let after_digits = &trimmed[digit_end..];
-        if let Some(rest) = after_digits.strip_prefix(". ").or_else(|| after_digits.strip_prefix(") ")) {
-            if checkbox(rest) {
-                return digit_end + 2; // "1. " / "1) "
-            }
+        if let Some(rest) = after_digits
+            .strip_prefix(". ")
+            .or_else(|| after_digits.strip_prefix(") "))
+            && checkbox(rest)
+        {
+            return digit_end + 2; // "1. " / "1) "
         }
     }
 
@@ -99,7 +101,7 @@ impl AppState {
         );
     }
 
-    pub async fn save(&self, content: &str) -> Result<()> {
+    pub async fn save(&self, target: &Path, content: &str) -> Result<()> {
         // Record save time before writing (infinite loop prevention)
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -107,15 +109,18 @@ impl AppState {
             .unwrap_or(0);
         self.last_save_time.store(now, Ordering::SeqCst);
 
-        write(&self.file_path, content).await?;
+        write(target, content).await?;
 
-        // Update internal state
-        *self.markdown.write().await = content.to_string();
         let html = render(content);
-        *self.content.write().await = html.clone();
+
+        // Update cached state only for the root file
+        if target == self.file_path {
+            *self.markdown.write().await = content.to_string();
+            *self.content.write().await = html.clone();
+        }
 
         // Broadcast update so preview stays in sync
-        let path = self.file_path.display().to_string();
+        let path = target.display().to_string();
         let _ = self.tx.send(
             to_string(&WsMessage { msg_type: "update", path: &path, content: &html }).unwrap(),
         );
@@ -123,8 +128,12 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn toggle_task(&self, index: usize) -> Result<()> {
-        let markdown = self.markdown.read().await.clone();
+    pub async fn toggle_task(&self, target: &Path, index: usize) -> Result<()> {
+        let markdown = if target == self.file_path {
+            self.markdown.read().await.clone()
+        } else {
+            read_to_string(target).await.map_err(|e| Error::new(ErrorKind::NotFound, e))?
+        };
         let mut task_count = 0;
         let mut result = String::with_capacity(markdown.len());
         let mut toggled = false;
@@ -169,6 +178,6 @@ impl AppState {
             result.pop();
         }
 
-        self.save(&result).await
+        self.save(target, &result).await
     }
 }
