@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs::read_to_string, path::Path, time::Instant};
+use std::{collections::HashMap, time::Instant};
 
 use pulldown_cmark::{Event, MetadataBlockKind, Options, Parser, Tag, TagEnd, html::push_html};
 use serde_yaml::{Value, from_str};
@@ -99,10 +99,9 @@ fn render_front_matter(yaml: &str) -> String {
     html
 }
 
-pub fn render(path: &Path) -> String {
+pub fn render(content: &str) -> String {
     let start = Instant::now();
-    let content = read_to_string(path).unwrap_or_else(|e| format!("Error reading file: {e}"));
-    let parser = Parser::new_ext(&content, OPTIONS);
+    let parser = Parser::new_ext(content, OPTIONS);
 
     let mut slug_counts: HashMap<String, usize> = HashMap::new();
     let mut heading: Option<String> = None;

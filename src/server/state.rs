@@ -1,5 +1,4 @@
 use std::{
-    fs::read_to_string,
     io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -9,7 +8,7 @@ use std::{
 use serde::Serialize;
 use serde_json::to_string;
 use tokio::{
-    fs::write,
+    fs::{read_to_string, write},
     sync::{RwLock, broadcast::Sender},
 };
 
@@ -62,9 +61,11 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(file_path: PathBuf, tx: Sender<String>) -> Self {
-        let markdown = read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"));
+        let markdown =
+            std::fs::read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"));
+        let content = render(&markdown);
         Self {
-            content: RwLock::new(render(&file_path)),
+            content: RwLock::new(content),
             markdown: RwLock::new(markdown),
             file_path,
             tx,
@@ -83,8 +84,10 @@ impl AppState {
             return;
         }
 
-        let html = render(changed_path);
-        let markdown = read_to_string(changed_path).unwrap_or_else(|e| format!("Error: {e}"));
+        let markdown = read_to_string(changed_path)
+            .await
+            .unwrap_or_else(|e| format!("Error: {e}"));
+        let html = render(&markdown);
 
         if changed_path == self.file_path {
             *self.content.write().await = html.clone();
@@ -108,7 +111,7 @@ impl AppState {
 
         // Update internal state
         *self.markdown.write().await = content.to_string();
-        let html = render(&self.file_path);
+        let html = render(content);
         *self.content.write().await = html.clone();
 
         // Broadcast update so preview stays in sync
