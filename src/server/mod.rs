@@ -27,7 +27,7 @@ use open::that;
 use serde::{Deserialize, Serialize};
 use state::AppState;
 use template::render_page;
-use tokio::{net::TcpListener, spawn, sync::broadcast::channel};
+use tokio::{fs::read_to_string, net::TcpListener, spawn, sync::broadcast::channel};
 use tower_http::trace::TraceLayer;
 use tracing::{debug, debug_span, info};
 use watcher::watch;
@@ -106,9 +106,7 @@ fn resolve_target(state: &AppState, query_path: Option<&str>) -> Result<PathBuf,
                 .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
                 .canonicalize()
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-            let resolved = Path::new(p)
-                .canonicalize()
-                .map_err(|_| StatusCode::NOT_FOUND)?;
+            let resolved = Path::new(p).canonicalize().map_err(|_| StatusCode::NOT_FOUND)?;
             if !resolved.starts_with(&base) {
                 return Err(StatusCode::FORBIDDEN);
             }
@@ -133,7 +131,7 @@ async fn serve_raw(
     let markdown = if target == state.file_path {
         state.markdown.read().await.clone()
     } else {
-        match tokio::fs::read_to_string(&target).await {
+        match read_to_string(&target).await {
             Ok(m) => m,
             Err(_) => return StatusCode::NOT_FOUND.into_response(),
         }

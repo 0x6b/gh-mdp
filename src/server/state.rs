@@ -1,4 +1,5 @@
 use std::{
+    fs,
     io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
     sync::atomic::{AtomicU64, Ordering},
@@ -25,7 +26,8 @@ pub struct WsMessage<'a> {
 /// Returns the length of the bullet/marker prefix before `[ ] ` or `[x] ` if the line is a task
 /// item, or 0 if it isn't. Supports `-`, `*`, `+`, and ordered list markers (e.g. `1.`).
 fn task_bullet_len(trimmed: &str) -> usize {
-    let checkbox = |s: &str| s.starts_with("[ ] ") || s.starts_with("[x] ") || s.starts_with("[X] ");
+    let checkbox =
+        |s: &str| s.starts_with("[ ] ") || s.starts_with("[x] ") || s.starts_with("[X] ");
 
     // Unordered: "- ", "* ", "+ " followed by checkbox
     if let Some(rest) = trimmed
@@ -63,8 +65,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(file_path: PathBuf, tx: Sender<String>) -> Self {
-        let markdown =
-            std::fs::read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"));
+        let markdown = fs::read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"));
         let content = render(&markdown);
         Self {
             content: RwLock::new(content),
@@ -132,7 +133,9 @@ impl AppState {
         let markdown = if target == self.file_path {
             self.markdown.read().await.clone()
         } else {
-            read_to_string(target).await.map_err(|e| Error::new(ErrorKind::NotFound, e))?
+            read_to_string(target)
+                .await
+                .map_err(|e| Error::new(ErrorKind::NotFound, e))?
         };
         let mut task_count = 0;
         let mut result = String::with_capacity(markdown.len());
@@ -147,8 +150,7 @@ impl AppState {
                     let indent = &line[..line.len() - trimmed.len()];
                     let bullet = &trimmed[..bullet_len];
                     let rest = &trimmed[bullet_len + 4..];
-                    let marker = if trimmed[bullet_len..bullet_len + 4]
-                        .eq_ignore_ascii_case("[x] ")
+                    let marker = if trimmed[bullet_len..bullet_len + 4].eq_ignore_ascii_case("[x] ")
                     {
                         "[ ] "
                     } else {

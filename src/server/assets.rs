@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
-    http::{StatusCode, header::{CACHE_CONTROL, CONTENT_TYPE}},
+    http::{
+        StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE},
+    },
     response::IntoResponse,
 };
 use tokio::fs::read;

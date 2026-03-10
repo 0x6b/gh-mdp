@@ -1,4 +1,5 @@
 use std::{
+    path::Path,
     sync::{Arc, mpsc::channel},
     thread::{park, spawn},
     time::Duration,
@@ -16,7 +17,7 @@ const DEBOUNCE: Duration = Duration::from_millis(100);
 /// Build a composite Gitignore by collecting `.gitignore` files from `base_dir` up to the
 /// filesystem root. Files are added from the outermost ancestor first so that closer rules
 /// take precedence, matching standard git behavior.
-fn build_gitignore(base_dir: &std::path::Path) -> Gitignore {
+fn build_gitignore(base_dir: &Path) -> Gitignore {
     let mut paths = Vec::new();
     let mut dir = Some(base_dir);
     while let Some(d) = dir {

@@ -27,7 +27,10 @@ fn slugify(text: &str) -> String {
 }
 
 fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 fn yaml_value_to_html(value: &Value) -> String {
