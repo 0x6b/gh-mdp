@@ -319,7 +319,7 @@
       // Update editor content if initialized and in edit mode
       if (editorInitialized && editor && currentMode === 'edit') {
         // Fetch fresh markdown and update editor if content differs
-        fetch('/raw').then(r => r.text()).then(markdown => {
+        fetch('/raw?' + new URLSearchParams({ path: filePath })).then(r => r.text()).then(markdown => {
           if (editor[0].getValue() !== markdown) {
             editor[0].setValue(markdown);
           }
@@ -360,7 +360,7 @@
         const res = await fetch('/save', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content })
+          body: JSON.stringify({ content, path: filePath })
         });
         const data = await res.json();
         if (data.success) {
@@ -396,7 +396,7 @@
         const script = document.createElement('script');
         script.src = '/assets/overtype.min.js';
         script.onload = async () => {
-          const res = await fetch('/raw');
+          const res = await fetch('/raw?' + new URLSearchParams({ path: filePath }));
           const markdown = await res.text();
           editor = new OverType('#editor', {
             value: markdown,
@@ -415,7 +415,7 @@
         document.head.appendChild(script);
       } else {
         // Refresh content before switching
-        const res = await fetch('/raw');
+        const res = await fetch('/raw?' + new URLSearchParams({ path: filePath }));
         const markdown = await res.text();
         if (editor[0].getValue() !== markdown) {
           editor[0].setValue(markdown);
@@ -435,7 +435,7 @@
 
     const switchToPreview = async () => {
       // Fetch fresh rendered content before showing preview
-      const res = await fetch('/');
+      const res = await fetch(location.pathname);
       const html = await res.text();
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
@@ -642,7 +642,7 @@
             const res = await fetch('/toggle-task', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ index: parseInt(cb.dataset.taskIndex) })
+              body: JSON.stringify({ index: parseInt(cb.dataset.taskIndex), path: filePath })
             });
             const data = await res.json();
             if (!data.success) console.error('Toggle failed:', data.error);

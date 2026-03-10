@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Path, State},
-    http::{StatusCode, header::CONTENT_TYPE},
+    http::{
+        StatusCode,
+        header::{CACHE_CONTROL, CONTENT_TYPE},
+    },
     response::IntoResponse,
 };
 use tokio::fs::read;
@@ -41,7 +44,11 @@ pub async fn serve_asset(
     Path(path): Path<String>,
 ) -> impl IntoResponse {
     if let Some((_, ct, body)) = EMBEDDED.iter().find(|(name, _, _)| *name == path) {
-        return ([(CONTENT_TYPE, *ct)], *body).into_response();
+        return (
+            [(CONTENT_TYPE, *ct), (CACHE_CONTROL, "public, max-age=31536000, immutable")],
+            *body,
+        )
+            .into_response();
     }
 
     let Some(base_dir) = state.file_path.parent() else {

@@ -1,10 +1,11 @@
 use std::{
+    path::Path,
     sync::{Arc, mpsc::channel},
     thread::{park, spawn},
     time::Duration,
 };
 
-use ignore::gitignore::Gitignore;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
@@ -13,19 +14,37 @@ use super::state::AppState;
 
 const DEBOUNCE: Duration = Duration::from_millis(100);
 
+/// Build a composite Gitignore by collecting `.gitignore` files from `base_dir` up to the
+/// filesystem root. Files are added from the outermost ancestor first so that closer rules
+/// take precedence, matching standard git behavior.
+fn build_gitignore(base_dir: &Path) -> Gitignore {
+    let mut paths = Vec::new();
+    let mut dir = Some(base_dir);
+    while let Some(d) = dir {
+        let gi = d.join(".gitignore");
+        if gi.exists() {
+            paths.push(gi);
+        }
+        dir = d.parent();
+    }
+
+    if paths.is_empty() {
+        return Gitignore::empty();
+    }
+
+    // Add outermost first so inner rules override
+    let mut builder = GitignoreBuilder::new(base_dir);
+    for path in paths.into_iter().rev() {
+        let _ = builder.add(path);
+    }
+    builder.build().unwrap_or_else(|_| Gitignore::empty())
+}
+
 pub async fn watch(state: Arc<AppState>) {
     let (tx, rx) = channel();
     let base_dir = state.file_path.parent().unwrap_or(&state.file_path).to_path_buf();
 
-    let gitignore = {
-        let gitignore_path = base_dir.join(".gitignore");
-        if gitignore_path.exists() {
-            let (gi, _) = Gitignore::new(&gitignore_path);
-            gi
-        } else {
-            Gitignore::empty()
-        }
-    };
+    let gitignore = build_gitignore(&base_dir);
 
     info!("Watching for markdown changes in {}", base_dir.display());
 

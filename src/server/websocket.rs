@@ -8,10 +8,9 @@ use axum::{
     response::IntoResponse,
 };
 use futures::{SinkExt, StreamExt};
-use serde_json::to_string;
 use tokio::{select, spawn};
 
-use super::state::{AppState, WsMessage};
+use super::state::AppState;
 
 pub async fn upgrade(
     ws: WebSocketUpgrade,
@@ -22,16 +21,13 @@ pub async fn upgrade(
 
 async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
     let (mut tx, mut rx) = socket.split();
-    let mut broadcast = state.tx.subscribe();
 
-    let content = state.content.read().await.clone();
-    let path = state.file_path.display().to_string();
-    let msg = to_string(&WsMessage { msg_type: "update", path: &path, content: &content }).unwrap();
-
-    if tx.send(Message::Text(msg.into())).await.is_err() {
+    let initial = state.initial_message().await;
+    if tx.send(Message::Text(initial.into())).await.is_err() {
         return;
     }
 
+    let mut broadcast = state.tx.subscribe();
     let mut send_task = spawn(async move {
         while let Ok(msg) = broadcast.recv().await {
             if tx.send(Message::Text(msg.into())).await.is_err() {

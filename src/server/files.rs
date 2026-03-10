@@ -5,7 +5,7 @@ use axum::{
     http::{StatusCode, header::CONTENT_TYPE},
     response::{Html, IntoResponse},
 };
-use tokio::fs::read;
+use tokio::fs::{read, read_to_string};
 
 use super::{
     markdown::render,
@@ -28,7 +28,10 @@ pub async fn serve_file(
     };
 
     if resolved.extension().is_some_and(|ext| ext == "md") {
-        return Html(render_page(&resolved, &render(&resolved))).into_response();
+        let Ok(markdown) = read_to_string(&resolved).await else {
+            return StatusCode::NOT_FOUND.into_response();
+        };
+        return Html(render_page(&resolved, &render(&markdown))).into_response();
     }
 
     let Ok(content) = read(&resolved).await else {
