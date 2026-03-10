@@ -23,6 +23,35 @@ pub struct WsMessage<'a> {
     pub content: &'a str,
 }
 
+/// Returns the length of the bullet/marker prefix before `[ ] ` or `[x] ` if the line is a task
+/// item, or 0 if it isn't. Supports `-`, `*`, `+`, and ordered list markers (e.g. `1.`).
+fn task_bullet_len(trimmed: &str) -> usize {
+    let checkbox = |s: &str| s.starts_with("[ ] ") || s.starts_with("[x] ") || s.starts_with("[X] ");
+
+    // Unordered: "- ", "* ", "+ " followed by checkbox
+    if let Some(rest) = trimmed.strip_prefix("- ")
+        .or_else(|| trimmed.strip_prefix("* "))
+        .or_else(|| trimmed.strip_prefix("+ "))
+    {
+        if checkbox(rest) {
+            return 2; // "- " / "* " / "+ "
+        }
+    }
+
+    // Ordered: digits followed by ". " or ") " then checkbox
+    let digit_end = trimmed.find(|c: char| !c.is_ascii_digit()).unwrap_or(0);
+    if digit_end > 0 {
+        let after_digits = &trimmed[digit_end..];
+        if let Some(rest) = after_digits.strip_prefix(". ").or_else(|| after_digits.strip_prefix(") ")) {
+            if checkbox(rest) {
+                return digit_end + 2; // "1. " / "1) "
+            }
+        }
+    }
+
+    0
+}
+
 pub struct AppState {
     pub file_path: PathBuf,
     pub content: RwLock<String>,
@@ -99,16 +128,20 @@ impl AppState {
 
         for line in markdown.lines() {
             let trimmed = line.trim_start();
-            let is_task = (trimmed.starts_with("- [ ] ") || trimmed.starts_with("- [x] "))
-                || (trimmed.starts_with("* [ ] ") || trimmed.starts_with("* [x] "));
+            let bullet_len = task_bullet_len(trimmed);
 
-            if is_task {
+            if bullet_len > 0 {
                 if task_count == index {
                     let indent = &line[..line.len() - trimmed.len()];
-                    let bullet = &trimmed[..2];
-                    let rest = &trimmed[6..];
-                    let marker =
-                        if trimmed[3..4].eq_ignore_ascii_case("x") { "[ ] " } else { "[x] " };
+                    let bullet = &trimmed[..bullet_len];
+                    let rest = &trimmed[bullet_len + 4..];
+                    let marker = if trimmed[bullet_len..bullet_len + 4]
+                        .eq_ignore_ascii_case("[x] ")
+                    {
+                        "[ ] "
+                    } else {
+                        "[x] "
+                    };
                     result.push_str(indent);
                     result.push_str(bullet);
                     result.push_str(marker);
