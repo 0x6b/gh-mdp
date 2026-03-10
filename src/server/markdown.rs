@@ -35,11 +35,11 @@ fn escape_html(s: &str) -> String {
 
 fn yaml_value_to_html(value: &Value) -> String {
     match value {
-        serde_yaml::Value::Null => String::new(),
-        serde_yaml::Value::Bool(b) => format!("<div>{b}</div>"),
-        serde_yaml::Value::Number(n) => format!("<div>{n}</div>"),
-        serde_yaml::Value::String(s) => format!("<div>{}</div>", escape_html(s)),
-        serde_yaml::Value::Sequence(seq) => {
+        Value::Null => String::new(),
+        Value::Bool(b) => format!("<div>{b}</div>"),
+        Value::Number(n) => format!("<div>{n}</div>"),
+        Value::String(s) => format!("<div>{}</div>", escape_html(s)),
+        Value::Sequence(seq) => {
             let mut html = String::from("<div><table><tbody>");
             for item in seq {
                 html.push_str("<tr><td>");
@@ -49,7 +49,7 @@ fn yaml_value_to_html(value: &Value) -> String {
             html.push_str("</tbody></table></div>");
             html
         }
-        serde_yaml::Value::Mapping(map) => {
+        Value::Mapping(map) => {
             let mut html = String::from("<div><table><thead><tr>");
             for (key, _) in map {
                 html.push_str("<th>");
@@ -65,35 +65,30 @@ fn yaml_value_to_html(value: &Value) -> String {
             html.push_str("</tr></tbody></table></div>");
             html
         }
-        serde_yaml::Value::Tagged(tagged) => yaml_value_to_html(&tagged.value),
+        Value::Tagged(tagged) => yaml_value_to_html(&tagged.value),
     }
 }
 
 fn render_front_matter(yaml: &str) -> String {
-    let value: Value = match from_str(yaml) {
-        Ok(v) => v,
-        Err(_) => return String::new(),
-    };
-
-    let mapping = match value.as_mapping() {
-        Some(m) => m,
-        None => return String::new(),
+    let Ok(Value::Mapping(mapping)) = from_str::<Value>(yaml) else {
+        return String::new();
     };
 
     if mapping.is_empty() {
         return String::new();
     }
 
+    use std::fmt::Write;
     let mut html = String::from("<table><thead><tr>");
-    for (key, _) in mapping {
+    for (key, _) in &mapping {
         let key_str = match key.as_str() {
             Some(s) => escape_html(s),
             None => format!("{key:?}"),
         };
-        html.push_str(&format!("<th>{key_str}</th>"));
+        let _ = write!(html, "<th>{key_str}</th>");
     }
     html.push_str("</tr></thead><tbody><tr>");
-    for (_, value) in mapping {
+    for (_, value) in &mapping {
         html.push_str("<td>");
         html.push_str(&yaml_value_to_html(value));
         html.push_str("</td>");

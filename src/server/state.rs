@@ -1,4 +1,5 @@
 use std::{
+    fmt::Write,
     fs,
     io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
@@ -16,11 +17,17 @@ use tokio::{
 use super::markdown::render;
 
 #[derive(Serialize)]
-pub struct WsMessage<'a> {
+struct WsMessage<'a> {
     #[serde(rename = "type")]
     pub msg_type: &'a str,
     pub path: &'a str,
     pub content: &'a str,
+}
+
+fn now_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_millis() as u64)
 }
 
 /// Returns the length of the bullet/marker prefix before `[ ] ` or `[x] ` if the line is a task
@@ -76,14 +83,23 @@ impl AppState {
         }
     }
 
+    pub async fn initial_message(&self) -> String {
+        let content = self.content.read().await;
+        let path = self.file_path.display().to_string();
+        to_string(&WsMessage { msg_type: "update", path: &path, content: &content }).unwrap()
+    }
+
+    fn broadcast(&self, path: &Path, html: &str) {
+        let path = path.display().to_string();
+        let _ = self.tx.send(
+            to_string(&WsMessage { msg_type: "update", path: &path, content: html }).unwrap(),
+        );
+    }
+
     pub async fn refresh(&self, changed_path: &Path) {
         // Skip if this change was caused by our own save (infinite loop prevention)
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
         let last_save = self.last_save_time.load(Ordering::SeqCst);
-        if now.saturating_sub(last_save) < 500 {
+        if now_millis().saturating_sub(last_save) < 500 {
             return;
         }
 
@@ -96,19 +112,12 @@ impl AppState {
             *self.content.write().await = html.clone();
             *self.markdown.write().await = markdown;
         }
-        let path = changed_path.display().to_string();
-        let _ = self.tx.send(
-            to_string(&WsMessage { msg_type: "update", path: &path, content: &html }).unwrap(),
-        );
+        self.broadcast(changed_path, &html);
     }
 
     pub async fn save(&self, target: &Path, content: &str) -> Result<()> {
         // Record save time before writing (infinite loop prevention)
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
-        self.last_save_time.store(now, Ordering::SeqCst);
+        self.last_save_time.store(now_millis(), Ordering::SeqCst);
 
         write(target, content).await?;
 
@@ -121,10 +130,7 @@ impl AppState {
         }
 
         // Broadcast update so preview stays in sync
-        let path = target.display().to_string();
-        let _ = self.tx.send(
-            to_string(&WsMessage { msg_type: "update", path: &path, content: &html }).unwrap(),
-        );
+        self.broadcast(target, &html);
 
         Ok(())
     }
@@ -156,10 +162,7 @@ impl AppState {
                     } else {
                         "[x] "
                     };
-                    result.push_str(indent);
-                    result.push_str(bullet);
-                    result.push_str(marker);
-                    result.push_str(rest);
+                    write!(result, "{indent}{bullet}{marker}{rest}").unwrap();
                     toggled = true;
                 } else {
                     result.push_str(line);

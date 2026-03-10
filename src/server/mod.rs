@@ -8,6 +8,7 @@ mod watcher;
 mod websocket;
 
 use std::{
+    io,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     sync::Arc,
@@ -19,6 +20,7 @@ use axum::{
     Json, Router,
     extract::{Query, State},
     http::{Request, Response, StatusCode, header::CONTENT_TYPE},
+    response,
     response::{Html, IntoResponse},
     routing::{get, post},
     serve,
@@ -107,11 +109,8 @@ fn resolve_target(state: &AppState, query_path: Option<&str>) -> Result<PathBuf,
                 .canonicalize()
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             let resolved = Path::new(p).canonicalize().map_err(|_| StatusCode::NOT_FOUND)?;
-            if !resolved.starts_with(&base) {
+            if !resolved.starts_with(&base) || resolved.extension().is_none_or(|ext| ext != "md") {
                 return Err(StatusCode::FORBIDDEN);
-            }
-            if resolved.extension().is_none_or(|ext| ext != "md") {
-                return Err(StatusCode::BAD_REQUEST);
             }
             Ok(resolved)
         }
@@ -153,17 +152,30 @@ struct SaveResponse {
     error: Option<String>,
 }
 
+impl SaveResponse {
+    fn ok() -> Self {
+        Self { success: true, error: None }
+    }
+
+    fn err(e: impl std::fmt::Display) -> Self {
+        Self { success: false, error: Some(e.to_string()) }
+    }
+}
+
+fn json_result(result: io::Result<()>) -> response::Response {
+    match result {
+        Ok(()) => Json(SaveResponse::ok()).into_response(),
+        Err(e) => Json(SaveResponse::err(e)).into_response(),
+    }
+}
+
 async fn save_markdown(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<SaveRequest>,
-) -> impl IntoResponse {
-    let target = match resolve_target(&state, payload.path.as_deref()) {
-        Ok(p) => p,
-        Err(s) => return s.into_response(),
-    };
-    match state.save(&target, &payload.content).await {
-        Ok(()) => Json(SaveResponse { success: true, error: None }).into_response(),
-        Err(e) => Json(SaveResponse { success: false, error: Some(e.to_string()) }).into_response(),
+) -> response::Response {
+    match resolve_target(&state, payload.path.as_deref()) {
+        Ok(target) => json_result(state.save(&target, &payload.content).await),
+        Err(s) => s.into_response(),
     }
 }
 
@@ -176,13 +188,9 @@ struct ToggleTaskRequest {
 async fn toggle_task(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<ToggleTaskRequest>,
-) -> impl IntoResponse {
-    let target = match resolve_target(&state, payload.path.as_deref()) {
-        Ok(p) => p,
-        Err(s) => return s.into_response(),
-    };
-    match state.toggle_task(&target, payload.index).await {
-        Ok(()) => Json(SaveResponse { success: true, error: None }).into_response(),
-        Err(e) => Json(SaveResponse { success: false, error: Some(e.to_string()) }).into_response(),
+) -> response::Response {
+    match resolve_target(&state, payload.path.as_deref()) {
+        Ok(target) => json_result(state.toggle_task(&target, payload.index).await),
+        Err(s) => s.into_response(),
     }
 }
