@@ -8,6 +8,7 @@ mod watcher;
 mod websocket;
 
 use std::{
+    fmt::Display,
     io,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
@@ -16,6 +17,7 @@ use std::{
 };
 
 use anyhow::Result;
+use assets::{serve_asset, serve_favicon};
 use axum::{
     Json, Router,
     extract::{Query, State},
@@ -25,6 +27,7 @@ use axum::{
     routing::{get, post},
     serve,
 };
+use files::serve_file;
 use open::that;
 use serde::{Deserialize, Serialize};
 use state::AppState;
@@ -33,6 +36,7 @@ use tokio::{fs::read_to_string, net::TcpListener, spawn, sync::broadcast::channe
 use tower_http::trace::TraceLayer;
 use tracing::{debug, debug_span, info};
 use watcher::watch;
+use websocket::upgrade;
 
 pub struct Server {
     state: Arc<AppState>,
@@ -68,10 +72,10 @@ impl Server {
             .route("/raw", get(serve_raw))
             .route("/save", post(save_markdown))
             .route("/toggle-task", post(toggle_task))
-            .route("/favicon.ico", get(assets::serve_favicon))
-            .route("/ws", get(websocket::upgrade))
-            .route("/assets/{path}", get(assets::serve_asset))
-            .route("/{*path}", get(files::serve_file))
+            .route("/favicon.ico", get(serve_favicon))
+            .route("/ws", get(upgrade))
+            .route("/assets/{path}", get(serve_asset))
+            .route("/{*path}", get(serve_file))
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|req: &Request<_>| {
@@ -157,7 +161,7 @@ impl SaveResponse {
         Self { success: true, error: None }
     }
 
-    fn err(e: impl std::fmt::Display) -> Self {
+    fn err(e: impl Display) -> Self {
         Self { success: false, error: Some(e.to_string()) }
     }
 }

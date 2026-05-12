@@ -74,4 +74,4 @@ The third-party assets are downloaded at build time and embedded into the final 
 
 The favicon and header icon use the [Markdown mark](https://commons.wikimedia.org/wiki/File:Markdown-mark.svg) from Wikimedia Commons (CC0/Public Domain).
 
-UI icons (copy, list, screen-full) are from [Octicons](https://primer.style/foundations/icons) (MIT).
+UI icons (copy, list, screen-full) and GitHub-style alert icons (note, tip, important, warning, caution) are from [Octicons](https://primer.style/foundations/icons) (MIT).
