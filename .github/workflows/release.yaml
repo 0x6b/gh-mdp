@@ -12,16 +12,16 @@ jobs:
   release-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: cli/gh-extension-precompile@v1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: cli/gh-extension-precompile@9e2237c30f869ad3bcaed6a4be2cd43564dd421b # v2.1.0
         with:
           build_script_override: "./scripts/build.sh"
 
   release-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable @ 2025-12-08
         with:
           targets: x86_64-apple-darwin,aarch64-apple-darwin
       - name: Build for Intel macOS
@@ -35,7 +35,7 @@ jobs:
           TARGET_TRIPLE: aarch64-apple-darwin
           OS_ARCH: darwin-arm64
       - name: Upload release artifact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           draft: false
           prerelease: false
@@ -46,8 +46,8 @@ jobs:
   release-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable @ 2025-12-08
         with:
           targets: x86_64-pc-windows-msvc
       - name: Build for x86_64 Windows
@@ -56,7 +56,7 @@ jobs:
           TARGET_TRIPLE: x86_64-pc-windows-msvc
           OS_ARCH: windows-amd64.exe
       - name: Upload release artifact
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           draft: false
           prerelease: false
