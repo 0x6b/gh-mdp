@@ -118,7 +118,7 @@ fn render_front_matter(yaml: &str) -> String {
     html
 }
 
-pub fn render(content: &str) -> String {
+pub fn render(content: &str, file: &str, url: &str) -> String {
     let start = Instant::now();
     let parser = Parser::new_ext(content, OPTIONS);
 
@@ -188,6 +188,6 @@ pub fn render(content: &str) -> String {
         html.push_str(&render_front_matter(&metadata_text));
     }
     push_html(&mut html, events.into_iter());
-    info!(latency = ?start.elapsed(), "Markdown rendered");
+    info!(file, url, latency = ?start.elapsed(), "Markdown rendered");
     html
 }

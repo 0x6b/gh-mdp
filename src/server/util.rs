@@ -1,4 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::{
+    env::current_dir,
+    path::{Path, PathBuf},
+};
 
 use axum::http::StatusCode;
 use mime_guess::from_path;
@@ -15,6 +18,13 @@ pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
         },
         |m| m.to_string(),
     )
+}
+
+pub fn relative_display(path: &Path) -> String {
+    current_dir()
+        .ok()
+        .and_then(|cwd| path.strip_prefix(&cwd).ok().map(|p| p.display().to_string()))
+        .unwrap_or_else(|| path.display().to_string())
 }
 
 pub fn resolve_safe_path(base: &Path, requested: &str) -> Result<PathBuf, StatusCode> {

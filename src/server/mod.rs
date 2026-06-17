@@ -58,6 +58,7 @@ impl Server {
         let listener =
             TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
         let url = format!("http://{}", listener.local_addr()?);
+        self.state.set_base_url(url.clone()).await;
         info!("Listening on {url}");
         info!("Watching {}", self.state.file_path.display());
 
