@@ -3,7 +3,10 @@ use std::{
     fs,
     io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -14,7 +17,7 @@ use tokio::{
     sync::{RwLock, broadcast::Sender},
 };
 
-use super::markdown::render;
+use super::{markdown::render, util::relative_display};
 
 #[derive(Serialize)]
 struct WsMessage<'a> {
@@ -68,19 +71,41 @@ pub struct AppState {
     pub markdown: RwLock<String>,
     pub tx: Sender<String>,
     last_save_time: AtomicU64,
+    base_url: OnceLock<String>,
 }
 
 impl AppState {
     pub fn new(file_path: PathBuf, tx: Sender<String>) -> Self {
         let markdown = fs::read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"));
-        let content = render(&markdown);
         Self {
-            content: RwLock::new(content),
+            content: RwLock::new(String::new()),
             markdown: RwLock::new(markdown),
             file_path,
             tx,
             last_save_time: AtomicU64::new(0),
+            base_url: OnceLock::new(),
         }
+    }
+
+    pub async fn set_base_url(&self, url: String) {
+        let _ = self.base_url.set(url);
+        let markdown = self.markdown.read().await;
+        let file = relative_display(&self.file_path);
+        let url = self.file_url(&self.file_path);
+        *self.content.write().await = render(&markdown, &file, &url);
+    }
+
+    pub fn file_url(&self, file: &Path) -> String {
+        let base = self.base_url.get().map_or("", std::string::String::as_str);
+        let path = if file == self.file_path {
+            "/".to_string()
+        } else {
+            self.file_path
+                .parent()
+                .and_then(|base| file.strip_prefix(base).ok())
+                .map_or_else(|| "/".to_string(), |rel| format!("/{}", rel.display()))
+        };
+        format!("{base}{path}")
     }
 
     pub async fn initial_message(&self) -> String {
@@ -106,7 +131,9 @@ impl AppState {
         let markdown = read_to_string(changed_path)
             .await
             .unwrap_or_else(|e| format!("Error: {e}"));
-        let html = render(&markdown);
+        let file = relative_display(changed_path);
+        let url = self.file_url(changed_path);
+        let html = render(&markdown, &file, &url);
 
         if changed_path == self.file_path {
             *self.content.write().await = html.clone();
@@ -121,7 +148,9 @@ impl AppState {
 
         write(target, content).await?;
 
-        let html = render(content);
+        let file = relative_display(target);
+        let url = self.file_url(target);
+        let html = render(content, &file, &url);
 
         // Update cached state only for the root file
         if target == self.file_path {

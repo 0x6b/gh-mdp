@@ -11,7 +11,7 @@ use super::{
     markdown::render,
     state::AppState,
     template::render_page,
-    util::{guess_content_type, resolve_safe_path},
+    util::{guess_content_type, relative_display, resolve_safe_path},
 };
 
 pub async fn serve_file(
@@ -31,7 +31,9 @@ pub async fn serve_file(
         let Ok(markdown) = read_to_string(&resolved).await else {
             return StatusCode::NOT_FOUND.into_response();
         };
-        return Html(render_page(&resolved, &render(&markdown))).into_response();
+        let file = relative_display(&resolved);
+        let url = state.file_url(&resolved);
+        return Html(render_page(&resolved, &render(&markdown, &file, &url))).into_response();
     }
 
     let Ok(content) = read(&resolved).await else {
