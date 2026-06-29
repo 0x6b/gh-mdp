@@ -1,6 +1,6 @@
 [package]
 name = "gh-mdp"
-version = "0.14.0"
+version = "0.14.1"
 edition = "2024"
 description = "A GitHub Flavored Markdown live preview server"
 
@@ -32,7 +32,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 # Error management
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 
 # CLI handling
 clap = { version = "4.6.1", features = ["derive"] }
