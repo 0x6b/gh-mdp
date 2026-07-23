@@ -1,6 +1,8 @@
 use std::{
+    collections::HashMap,
     fmt::Write,
     fs,
+    hash::{Hash, Hasher},
     io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
     sync::{
@@ -31,6 +33,12 @@ fn now_millis() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| d.as_millis() as u64)
+}
+
+fn content_hash(content: &str) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    content.hash(&mut hasher);
+    hasher.finish()
 }
 
 /// Returns the length of the bullet/marker prefix before `[ ] ` or `[x] ` if the line is a task
@@ -71,6 +79,12 @@ pub struct AppState {
     pub markdown: RwLock<String>,
     pub tx: Sender<String>,
     last_save_time: AtomicU64,
+    /// Hash of the last content we rendered per path, used to drop redundant
+    /// file-system events that report a change without the content actually
+    /// changing. A single edit often produces several watcher events (e.g.
+    /// editors saving via write-temp-then-rename, or flaky filesystem layers
+    /// such as WSL2's `/mnt` mounts); this collapses them to one refresh.
+    last_hash: RwLock<HashMap<PathBuf, u64>>,
     base_url: OnceLock<String>,
 }
 
@@ -83,6 +97,7 @@ impl AppState {
             file_path,
             tx,
             last_save_time: AtomicU64::new(0),
+            last_hash: RwLock::new(HashMap::new()),
             base_url: OnceLock::new(),
         }
     }
@@ -121,16 +136,31 @@ impl AppState {
         );
     }
 
-    pub async fn refresh(&self, changed_path: &Path) {
+    /// Re-render and broadcast the given path. Returns `true` when an update was
+    /// actually sent, and `false` when the event was dropped as redundant (our
+    /// own save, or unchanged content) so callers can avoid logging no-op events.
+    pub async fn refresh(&self, changed_path: &Path) -> bool {
         // Skip if this change was caused by our own save (infinite loop prevention)
         let last_save = self.last_save_time.load(Ordering::SeqCst);
         if now_millis().saturating_sub(last_save) < 500 {
-            return;
+            return false;
         }
 
         let markdown = read_to_string(changed_path)
             .await
             .unwrap_or_else(|e| format!("Error: {e}"));
+
+        // Drop spurious events: if the content is identical to what we last
+        // rendered for this path, there is nothing to refresh.
+        let hash = content_hash(&markdown);
+        {
+            let mut last_hash = self.last_hash.write().await;
+            if last_hash.get(changed_path) == Some(&hash) {
+                return false;
+            }
+            last_hash.insert(changed_path.to_path_buf(), hash);
+        }
+
         let file = relative_display(changed_path);
         let url = self.file_url(changed_path);
         let html = render(&markdown, &file, &url);
@@ -140,6 +170,7 @@ impl AppState {
             *self.markdown.write().await = markdown;
         }
         self.broadcast(changed_path, &html);
+        true
     }
 
     pub async fn save(&self, target: &Path, content: &str) -> Result<()> {
@@ -147,6 +178,10 @@ impl AppState {
         self.last_save_time.store(now_millis(), Ordering::SeqCst);
 
         write(target, content).await?;
+
+        // Record the saved content's hash so the resulting watcher event is
+        // recognised as a no-op change and does not trigger a redundant refresh.
+        self.last_hash.write().await.insert(target.to_path_buf(), content_hash(content));
 
         let file = relative_display(target);
         let url = self.file_url(target);
