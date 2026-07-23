@@ -74,7 +74,8 @@ pub async fn watch(state: Arc<AppState>) {
     });
 
     while let Some(path) = notify_rx.recv().await {
-        info!("File changed: {}", path.display());
-        state.refresh(&path).await;
+        if state.refresh(&path).await {
+            info!("File changed: {}", path.display());
+        }
     }
 }
