@@ -7,6 +7,7 @@ A GitHub Flavored Markdown live preview server that:
 - Offers GitHub-style rendering with syntax highlighting and Mermaid diagrams
 - Serves relative links (images, files) from the markdown's directory
 - Renders linked markdown files with the same template
+- Falls back to a browsable directory listing when there is no `index.md` or `README.md`
 - Integrates all resources into a single binary (no internet connection required)
 - Supports in-browser editing with [OverType](https://overtype.dev/)
 - Can be used as a `gh` extension
@@ -45,7 +46,7 @@ A GitHub Flavored Markdown live preview server
 Usage: gh-mdp [OPTIONS] [FILE]
 
 Arguments:
-  [FILE]  Markdown file or directory to preview (defaults to ./index.md or ./README.md)
+  [FILE]  Markdown file or directory to preview (defaults to ./index.md, ./README.md, or a listing of the current directory)
 
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
@@ -54,7 +55,10 @@ Options:
   -V, --version      Print version
 ```
 
-When a directory is specified, it looks for `index.md` first, then `README.md`.
+When a directory is specified, it looks for `index.md` first, then `README.md`. If the directory
+has neither, a browsable file listing is shown instead. Listings skip dotfiles and gitignored
+entries, and update live as files come and go. Browsing into a subdirectory that has no markdown
+file shows its listing too. Listings are read-only, so the edit toggle is hidden.
 
 ## License
 

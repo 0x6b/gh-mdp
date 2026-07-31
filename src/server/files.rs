@@ -8,6 +8,7 @@ use axum::{
 use tokio::fs::{read, read_to_string};
 
 use super::{
+    listing::render_listing,
     markdown::render,
     state::AppState,
     template::render_page,
@@ -18,14 +19,20 @@ pub async fn serve_file(
     State(state): State<Arc<AppState>>,
     Path(path): Path<String>,
 ) -> impl IntoResponse {
-    let Some(base_dir) = state.file_path.parent() else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-
-    let resolved = match resolve_safe_path(base_dir, &path) {
+    let resolved = match resolve_safe_path(&state.base_dir, &path) {
         Ok(p) => p,
         Err(s) => return s.into_response(),
     };
+
+    // Directories get the same generated listing as a directory root, minus the
+    // edit toggle since there is no file to save back to.
+    if resolved.is_dir() {
+        let markdown = render_listing(&resolved, &state.base_dir);
+        let file = relative_display(&resolved);
+        let url = state.file_url(&resolved);
+        let html = render(&markdown, &file, &url);
+        return Html(render_page(&resolved, &html, true)).into_response();
+    }
 
     if resolved.extension().is_some_and(|ext| ext == "md") {
         let Ok(markdown) = read_to_string(&resolved).await else {
@@ -33,7 +40,8 @@ pub async fn serve_file(
         };
         let file = relative_display(&resolved);
         let url = state.file_url(&resolved);
-        return Html(render_page(&resolved, &render(&markdown, &file, &url))).into_response();
+        return Html(render_page(&resolved, &render(&markdown, &file, &url), false))
+            .into_response();
     }
 
     let Ok(content) = read(&resolved).await else {

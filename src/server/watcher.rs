@@ -1,48 +1,20 @@
 use std::{
-    path::Path,
     sync::{Arc, mpsc::channel},
     thread::{park, spawn},
     time::Duration,
 };
 
-use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 
-use super::state::AppState;
+use super::{state::AppState, util::build_gitignore};
 
 const DEBOUNCE: Duration = Duration::from_millis(100);
 
-/// Build a composite Gitignore by collecting `.gitignore` files from `base_dir` up to the
-/// filesystem root. Files are added from the outermost ancestor first so that closer rules
-/// take precedence, matching standard git behavior.
-fn build_gitignore(base_dir: &Path) -> Gitignore {
-    let mut paths = Vec::new();
-    let mut dir = Some(base_dir);
-    while let Some(d) = dir {
-        let gi = d.join(".gitignore");
-        if gi.exists() {
-            paths.push(gi);
-        }
-        dir = d.parent();
-    }
-
-    if paths.is_empty() {
-        return Gitignore::empty();
-    }
-
-    // Add outermost first so inner rules override
-    let mut builder = GitignoreBuilder::new(base_dir);
-    for path in paths.into_iter().rev() {
-        let _ = builder.add(path);
-    }
-    builder.build().unwrap_or_else(|_| Gitignore::empty())
-}
-
 pub async fn watch(state: Arc<AppState>) {
     let (tx, rx) = channel();
-    let base_dir = state.file_path.parent().unwrap_or(&state.file_path).to_path_buf();
+    let base_dir = state.base_dir.clone();
 
     let gitignore = build_gitignore(&base_dir);
 
@@ -61,12 +33,15 @@ pub async fn watch(state: Arc<AppState>) {
     });
 
     let (notify_tx, mut notify_rx) = unbounded_channel();
+    let listing = state.listing;
     spawn(move || {
         while let Ok(Ok(events)) = rx.recv() {
             for e in events {
                 let is_md = e.path.extension().is_some_and(|ext| ext == "md");
                 let is_ignored = gitignore.matched_path_or_any_parents(&e.path, false).is_ignore();
-                if is_md && !is_ignored {
+                // Non-markdown events matter too when the root page is a directory
+                // listing: adding or removing any file changes what it should show.
+                if (is_md || listing) && !is_ignored {
                     let _ = notify_tx.send(e.path);
                 }
             }
@@ -74,8 +49,11 @@ pub async fn watch(state: Arc<AppState>) {
     });
 
     while let Some(path) = notify_rx.recv().await {
-        if state.refresh(&path).await {
+        if path.extension().is_some_and(|ext| ext == "md") && state.refresh(&path).await {
             info!("File changed: {}", path.display());
+        }
+        if state.listing && state.refresh(&base_dir).await {
+            info!("Directory changed: {}", base_dir.display());
         }
     }
 }

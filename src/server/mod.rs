@@ -1,5 +1,6 @@
 mod assets;
 mod files;
+mod listing;
 mod markdown;
 mod state;
 mod template;
@@ -93,7 +94,7 @@ impl Server {
 }
 
 async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
-    Html(render_page(&state.file_path, &state.content.read().await))
+    Html(render_page(&state.file_path, &state.content.read().await, state.listing))
 }
 
 #[derive(Deserialize)]
@@ -103,14 +104,13 @@ struct PathQuery {
 
 /// Resolve a target file path from an optional query/body parameter, falling back
 /// to the root file. The client sends the canonical absolute path (as set by the
-/// template). We verify it is a `.md` file inside the base directory.
+/// template). We verify it is a `.md` file inside the base directory, so a
+/// directory-listing root is never a valid target.
 fn resolve_target(state: &AppState, query_path: Option<&str>) -> Result<PathBuf, StatusCode> {
     match query_path {
         Some(p) => {
             let base = state
-                .file_path
-                .parent()
-                .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+                .base_dir
                 .canonicalize()
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
             let resolved = Path::new(p).canonicalize().map_err(|_| StatusCode::NOT_FOUND)?;
@@ -119,6 +119,7 @@ fn resolve_target(state: &AppState, query_path: Option<&str>) -> Result<PathBuf,
             }
             Ok(resolved)
         }
+        None if state.listing => Err(StatusCode::FORBIDDEN),
         None => Ok(state.file_path.clone()),
     }
 }

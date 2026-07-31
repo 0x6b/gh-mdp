@@ -1,10 +1,11 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, hash_map::DefaultHasher},
     fmt::Write,
     fs,
     hash::{Hash, Hasher},
     io::{Error, ErrorKind, Result},
     path::{Path, PathBuf},
+    string,
     sync::{
         OnceLock,
         atomic::{AtomicU64, Ordering},
@@ -19,7 +20,7 @@ use tokio::{
     sync::{RwLock, broadcast::Sender},
 };
 
-use super::{markdown::render, util::relative_display};
+use super::{listing::render_listing, markdown::render, util::relative_display};
 
 #[derive(Serialize)]
 struct WsMessage<'a> {
@@ -36,7 +37,7 @@ fn now_millis() -> u64 {
 }
 
 fn content_hash(content: &str) -> u64 {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    let mut hasher = DefaultHasher::new();
     content.hash(&mut hasher);
     hasher.finish()
 }
@@ -74,7 +75,14 @@ fn task_bullet_len(trimmed: &str) -> usize {
 }
 
 pub struct AppState {
+    /// The previewed root. Normally a markdown file; when a directory was given
+    /// without an `index.md` or `README.md` it is that directory, and the root
+    /// page shows a directory listing instead.
     pub file_path: PathBuf,
+    /// Directory that relative links, file serving, and watching are rooted at.
+    pub base_dir: PathBuf,
+    /// Whether the root page is a directory listing (read-only) rather than a file.
+    pub listing: bool,
     pub content: RwLock<String>,
     pub markdown: RwLock<String>,
     pub tx: Sender<String>,
@@ -90,11 +98,23 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(file_path: PathBuf, tx: Sender<String>) -> Self {
-        let markdown = fs::read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"));
+        let listing = file_path.is_dir();
+        let base_dir = if listing {
+            file_path.clone()
+        } else {
+            file_path.parent().unwrap_or(&file_path).to_path_buf()
+        };
+        let markdown = if listing {
+            render_listing(&file_path, &base_dir)
+        } else {
+            fs::read_to_string(&file_path).unwrap_or_else(|e| format!("Error: {e}"))
+        };
         Self {
             content: RwLock::new(String::new()),
             markdown: RwLock::new(markdown),
             file_path,
+            base_dir,
+            listing,
             tx,
             last_save_time: AtomicU64::new(0),
             last_hash: RwLock::new(HashMap::new()),
@@ -111,14 +131,12 @@ impl AppState {
     }
 
     pub fn file_url(&self, file: &Path) -> String {
-        let base = self.base_url.get().map_or("", std::string::String::as_str);
+        let base = self.base_url.get().map_or("", string::String::as_str);
         let path = if file == self.file_path {
             "/".to_string()
         } else {
-            self.file_path
-                .parent()
-                .and_then(|base| file.strip_prefix(base).ok())
-                .map_or_else(|| "/".to_string(), |rel| format!("/{}", rel.display()))
+            file.strip_prefix(&self.base_dir)
+                .map_or_else(|_| "/".to_string(), |rel| format!("/{}", rel.display()))
         };
         format!("{base}{path}")
     }
@@ -146,9 +164,13 @@ impl AppState {
             return false;
         }
 
-        let markdown = read_to_string(changed_path)
-            .await
-            .unwrap_or_else(|e| format!("Error: {e}"));
+        let markdown = if changed_path.is_dir() {
+            render_listing(changed_path, &self.base_dir)
+        } else {
+            read_to_string(changed_path)
+                .await
+                .unwrap_or_else(|e| format!("Error: {e}"))
+        };
 
         // Drop spurious events: if the content is identical to what we last
         // rendered for this path, there is nothing to refresh.
@@ -181,7 +203,10 @@ impl AppState {
 
         // Record the saved content's hash so the resulting watcher event is
         // recognised as a no-op change and does not trigger a redundant refresh.
-        self.last_hash.write().await.insert(target.to_path_buf(), content_hash(content));
+        self.last_hash
+            .write()
+            .await
+            .insert(target.to_path_buf(), content_hash(content));
 
         let file = relative_display(target);
         let url = self.file_url(target);
