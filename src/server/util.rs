@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use mime_guess::{
     from_path,
-    mime::{APPLICATION, CHARSET, JSON, Mime, OCTET_STREAM, TEXT, XML},
+    mime::{CHARSET, JAVASCRIPT, JSON, Mime, TEXT, XML},
 };
 
 /// Build a composite Gitignore by collecting `.gitignore` files from `base_dir` up to the
@@ -37,37 +37,37 @@ pub fn build_gitignore(base_dir: &Path) -> Gitignore {
 }
 
 pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
-    let Some(mime) = from_path(path).first() else {
-        return if std::str::from_utf8(content).is_ok() {
-            "text/plain; charset=utf-8"
-        } else {
-            "application/octet-stream"
+    // Valid UTF-8 with no NUL byte. Deciding from the bytes keeps source files readable even
+    // when the extension is unknown or mismapped, without mislabeling a legacy-encoded file.
+    let is_utf8_text = !content.contains(&0) && std::str::from_utf8(content).is_ok();
+
+    match from_path(path).first() {
+        // Types where a charset is meaningful. `mime_guess` returns them bare, e.g. `text/css`,
+        // which leaves the browser to sniff the encoding and mangle non-ASCII.
+        Some(mime) if carries_charset(&mime) => {
+            if is_utf8_text && mime.get_param(CHARSET).is_none() {
+                format!("{mime}; charset=utf-8")
+            } else {
+                mime.to_string()
+            }
         }
-        .into();
-    };
-
-    // `mime_guess` returns bare types such as `text/css`, leaving browsers to sniff the
-    // encoding. Declare UTF-8 for textual types, but only when the bytes really are valid
-    // UTF-8 so a legacy-encoded file is not mislabeled.
-    if is_textual(&mime)
-        && mime.get_param(CHARSET).is_none()
-        && std::str::from_utf8(content).is_ok()
-    {
-        return format!("{mime}; charset=utf-8");
+        // `mime_guess` is a poor source-code classifier: `.ts` is an MPEG transport stream,
+        // `.java` is `application/octet-stream`, and `.go`, `.kt`, `.tsx`, `.vue` map to
+        // nothing at all. Text content wins over any of those guesses.
+        _ if is_utf8_text => "text/plain; charset=utf-8".into(),
+        Some(mime) => mime.to_string(),
+        None => "application/octet-stream".into(),
     }
-
-    mime.to_string()
 }
 
-/// Whether a charset parameter is meaningful for this type. Covers `text/*`, JSON,
-/// JavaScript, any `+xml` structured syntax such as `image/svg+xml`, and the `application/x-*`
-/// types `mime_guess` hands back for scripts (`application/x-sh` and friends). Media families
-/// such as `image/*` and `audio/*`, plus the `application/octet-stream` fallback, are excluded.
-fn is_textual(mime: &Mime) -> bool {
-    if mime.subtype() == JSON || mime.subtype() == XML || mime.suffix() == Some(XML) {
-        return true;
-    }
-    (mime.type_() == TEXT || mime.type_() == APPLICATION) && mime.subtype() != OCTET_STREAM
+/// Whether a `charset` parameter is meaningful for this type: `text/*`, JSON, JavaScript, and
+/// any `+xml` structured syntax such as `image/svg+xml`.
+fn carries_charset(mime: &Mime) -> bool {
+    mime.type_() == TEXT
+        || mime.subtype() == JSON
+        || mime.subtype() == JAVASCRIPT
+        || mime.subtype() == XML
+        || mime.suffix() == Some(XML)
 }
 
 pub fn relative_display(path: &Path) -> String {
@@ -93,35 +93,44 @@ pub fn resolve_safe_path(base: &Path, requested: &str) -> Result<PathBuf, Status
 mod tests {
     use super::*;
 
-    fn textual(s: &str) -> bool {
-        is_textual(&s.parse::<Mime>().unwrap())
+    const TEXT_BYTES: &[u8] = "日本語".as_bytes();
+    // Shift_JIS "あ": valid bytes, invalid UTF-8.
+    const SJIS_BYTES: &[u8] = b"\x82\xa0";
+    const BINARY_BYTES: &[u8] = b"\x00\x01\x02";
+
+    fn ct(name: &str, content: &[u8]) -> String {
+        guess_content_type(Path::new(name), content)
     }
 
     #[test]
-    fn charset_is_added_only_to_textual_types() {
-        assert!(textual("text/x-python"));
-        assert!(textual("text/yaml"));
-        assert!(textual("application/x-sh"));
-        assert!(textual("application/json"));
-        assert!(textual("image/svg+xml"));
+    fn charset_types_keep_their_type_and_gain_utf8() {
+        assert!(carries_charset(&"text/css".parse().unwrap()));
+        assert!(carries_charset(&"application/json".parse().unwrap()));
+        assert!(carries_charset(&"image/svg+xml".parse().unwrap()));
+        assert!(!carries_charset(&"image/png".parse().unwrap()));
 
-        assert!(!textual("application/octet-stream"));
-        assert!(!textual("image/png"));
-        assert!(!textual("font/woff2"));
+        assert_eq!(ct("a.css", TEXT_BYTES), "text/css; charset=utf-8");
+        assert_eq!(ct("a.svg", TEXT_BYTES), "image/svg+xml; charset=utf-8");
     }
 
     #[test]
-    fn charset_is_added_only_when_bytes_are_utf8() {
-        let path = Path::new("a.yaml");
-        assert!(guess_content_type(path, "日本語".as_bytes()).ends_with("; charset=utf-8"));
-        // Shift_JIS bytes must not be labeled UTF-8.
-        assert!(!guess_content_type(path, b"\x82\xa0").contains("charset"));
+    fn text_content_overrides_a_wrong_or_missing_guess() {
+        // `.ts` guesses an MPEG stream, `.java` guesses octet-stream, `.go` guesses nothing.
+        for name in ["a.ts", "a.java", "a.go", "a.sh"] {
+            assert_eq!(ct(name, TEXT_BYTES), "text/plain; charset=utf-8", "{name}");
+        }
     }
 
     #[test]
-    fn unknown_extension_falls_back_on_content() {
-        let path = Path::new("a.unknown");
-        assert_eq!(guess_content_type(path, b"hi"), "text/plain; charset=utf-8");
-        assert_eq!(guess_content_type(path, b"\x82\xa0"), "application/octet-stream");
+    fn non_utf8_is_never_labeled_utf8() {
+        assert_eq!(ct("a.yaml", SJIS_BYTES), "text/x-yaml");
+        assert_eq!(ct("a.unknown", SJIS_BYTES), "application/octet-stream");
+    }
+
+    #[test]
+    fn binary_content_keeps_its_real_type() {
+        assert_eq!(ct("a.png", BINARY_BYTES), "image/png");
+        assert_eq!(ct("a.ts", BINARY_BYTES), "video/vnd.dlna.mpeg-tts");
+        assert_eq!(ct("a.unknown", BINARY_BYTES), "application/octet-stream");
     }
 }
