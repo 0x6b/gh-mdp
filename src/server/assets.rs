@@ -18,25 +18,45 @@ use super::{
 const FAVICON: &[u8] = br##"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 208 128"><rect width="198" height="118" x="5" y="5" ry="10" stroke="#000" stroke-width="10" fill="none"/><path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39zm125 0l-30-33h20V30h20v35h20z"/></svg>"##;
 
 const EMBEDDED: &[(&str, &str, &[u8])] = &[
-    ("github-markdown.min.css", "text/css", include_bytes!("../../assets/github-markdown.min.css")),
+    (
+        "github-markdown.min.css",
+        "text/css; charset=utf-8",
+        include_bytes!("../../assets/github-markdown.min.css"),
+    ),
     (
         "highlight-github.min.css",
-        "text/css",
+        "text/css; charset=utf-8",
         include_bytes!("../../assets/highlight-github.min.css"),
     ),
     (
         "highlight-github-dark.min.css",
-        "text/css",
+        "text/css; charset=utf-8",
         include_bytes!("../../assets/highlight-github-dark.min.css"),
     ),
-    ("highlight.min.js", "text/javascript", include_bytes!("../../assets/highlight.min.js")),
-    ("morphdom.min.js", "text/javascript", include_bytes!("../../assets/morphdom.min.js")),
-    ("mermaid.min.js", "text/javascript", include_bytes!("../../assets/mermaid.min.js")),
-    ("overtype.min.js", "text/javascript", include_bytes!("../../assets/overtype.min.js")),
+    (
+        "highlight.min.js",
+        "text/javascript; charset=utf-8",
+        include_bytes!("../../assets/highlight.min.js"),
+    ),
+    (
+        "morphdom.min.js",
+        "text/javascript; charset=utf-8",
+        include_bytes!("../../assets/morphdom.min.js"),
+    ),
+    (
+        "mermaid.min.js",
+        "text/javascript; charset=utf-8",
+        include_bytes!("../../assets/mermaid.min.js"),
+    ),
+    (
+        "overtype.min.js",
+        "text/javascript; charset=utf-8",
+        include_bytes!("../../assets/overtype.min.js"),
+    ),
 ];
 
 pub async fn serve_favicon() -> impl IntoResponse {
-    ([(CONTENT_TYPE, "image/svg+xml")], FAVICON)
+    ([(CONTENT_TYPE, "image/svg+xml; charset=utf-8")], FAVICON)
 }
 
 pub async fn serve_asset(
