@@ -5,7 +5,10 @@ use std::{
 
 use axum::http::StatusCode;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
-use mime_guess::from_path;
+use mime_guess::{
+    from_path,
+    mime::{APPLICATION, CHARSET, JSON, Mime, OCTET_STREAM, TEXT, XML},
+};
 
 /// Build a composite Gitignore by collecting `.gitignore` files from `base_dir` up to the
 /// filesystem root. Files are added from the outermost ancestor first so that closer rules
@@ -34,17 +37,37 @@ pub fn build_gitignore(base_dir: &Path) -> Gitignore {
 }
 
 pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
-    from_path(path).first().map_or_else(
-        || {
-            if std::str::from_utf8(content).is_ok() {
-                "text/plain; charset=utf-8"
-            } else {
-                "application/octet-stream"
-            }
-            .into()
-        },
-        |m| m.to_string(),
-    )
+    let Some(mime) = from_path(path).first() else {
+        return if std::str::from_utf8(content).is_ok() {
+            "text/plain; charset=utf-8"
+        } else {
+            "application/octet-stream"
+        }
+        .into();
+    };
+
+    // `mime_guess` returns bare types such as `text/css`, leaving browsers to sniff the
+    // encoding. Declare UTF-8 for textual types, but only when the bytes really are valid
+    // UTF-8 so a legacy-encoded file is not mislabeled.
+    if is_textual(&mime)
+        && mime.get_param(CHARSET).is_none()
+        && std::str::from_utf8(content).is_ok()
+    {
+        return format!("{mime}; charset=utf-8");
+    }
+
+    mime.to_string()
+}
+
+/// Whether a charset parameter is meaningful for this type. Covers `text/*`, JSON,
+/// JavaScript, any `+xml` structured syntax such as `image/svg+xml`, and the `application/x-*`
+/// types `mime_guess` hands back for scripts (`application/x-sh` and friends). Media families
+/// such as `image/*` and `audio/*`, plus the `application/octet-stream` fallback, are excluded.
+fn is_textual(mime: &Mime) -> bool {
+    if mime.subtype() == JSON || mime.subtype() == XML || mime.suffix() == Some(XML) {
+        return true;
+    }
+    (mime.type_() == TEXT || mime.type_() == APPLICATION) && mime.subtype() != OCTET_STREAM
 }
 
 pub fn relative_display(path: &Path) -> String {
@@ -64,4 +87,41 @@ pub fn resolve_safe_path(base: &Path, requested: &str) -> Result<PathBuf, Status
         return Err(StatusCode::FORBIDDEN);
     }
     Ok(resolved)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn textual(s: &str) -> bool {
+        is_textual(&s.parse::<Mime>().unwrap())
+    }
+
+    #[test]
+    fn charset_is_added_only_to_textual_types() {
+        assert!(textual("text/x-python"));
+        assert!(textual("text/yaml"));
+        assert!(textual("application/x-sh"));
+        assert!(textual("application/json"));
+        assert!(textual("image/svg+xml"));
+
+        assert!(!textual("application/octet-stream"));
+        assert!(!textual("image/png"));
+        assert!(!textual("font/woff2"));
+    }
+
+    #[test]
+    fn charset_is_added_only_when_bytes_are_utf8() {
+        let path = Path::new("a.yaml");
+        assert!(guess_content_type(path, "日本語".as_bytes()).ends_with("; charset=utf-8"));
+        // Shift_JIS bytes must not be labeled UTF-8.
+        assert!(!guess_content_type(path, b"\x82\xa0").contains("charset"));
+    }
+
+    #[test]
+    fn unknown_extension_falls_back_on_content() {
+        let path = Path::new("a.unknown");
+        assert_eq!(guess_content_type(path, b"hi"), "text/plain; charset=utf-8");
+        assert_eq!(guess_content_type(path, b"\x82\xa0"), "application/octet-stream");
+    }
 }
