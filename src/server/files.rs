@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::{Path, State},
-    http::{StatusCode, header::CONTENT_TYPE},
-    response::{Html, IntoResponse},
+    extract::{OriginalUri, Path, State},
+    http::{StatusCode, Uri, header::CONTENT_TYPE},
+    response::{Html, IntoResponse, Redirect},
 };
 use tokio::fs::{read, read_to_string};
 
@@ -17,6 +17,7 @@ use super::{
 
 pub async fn serve_file(
     State(state): State<Arc<AppState>>,
+    OriginalUri(uri): OriginalUri,
     Path(path): Path<String>,
 ) -> impl IntoResponse {
     let resolved = match resolve_safe_path(&state.base_dir, &path) {
@@ -27,6 +28,12 @@ pub async fn serve_file(
     // Directories get the same generated listing as a directory root, minus the
     // edit toggle since there is no file to save back to.
     if resolved.is_dir() {
+        // A relative link on /docs resolves from /, while the same link on
+        // /docs/ resolves from /docs/. Normalize directory URLs so entries
+        // in generated listings retain their directory prefix.
+        if let Some(location) = directory_redirect(&uri) {
+            return Redirect::permanent(&location).into_response();
+        }
         let markdown = render_listing(&resolved, &state.base_dir);
         let file = relative_display(&resolved);
         let url = state.file_url(&resolved);
@@ -49,4 +56,40 @@ pub async fn serve_file(
     };
 
     ([(CONTENT_TYPE, guess_content_type(&resolved, &content))], content).into_response()
+}
+
+fn directory_redirect(uri: &Uri) -> Option<String> {
+    if uri.path().ends_with('/') {
+        return None;
+    }
+
+    let mut location = format!("{}/", uri.path());
+    if let Some(query) = uri.query() {
+        location.push('?');
+        location.push_str(query);
+    }
+    Some(location)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn directory_url_gains_trailing_slash() {
+        let uri = "/docs".parse().unwrap();
+        assert_eq!(directory_redirect(&uri).as_deref(), Some("/docs/"));
+    }
+
+    #[test]
+    fn directory_redirect_preserves_query() {
+        let uri = "/docs?view=compact".parse().unwrap();
+        assert_eq!(directory_redirect(&uri).as_deref(), Some("/docs/?view=compact"));
+    }
+
+    #[test]
+    fn directory_url_with_trailing_slash_is_unchanged() {
+        let uri = "/docs/".parse().unwrap();
+        assert_eq!(directory_redirect(&uri), None);
+    }
 }
