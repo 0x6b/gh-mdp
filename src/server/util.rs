@@ -36,6 +36,20 @@ pub fn build_gitignore(base_dir: &Path) -> Gitignore {
     builder.build().unwrap_or_else(|_| Gitignore::empty())
 }
 
+/// Percent-encode a single path segment so it is safe inside a URL path or a
+/// markdown link destination (spaces, parentheses, `#`, and non-ASCII bytes all
+/// need it).
+pub fn encode_segment(name: &str) -> String {
+    name.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                char::from(b).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
 pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
     // Valid UTF-8 with no NUL byte. Deciding from the bytes keeps source files readable even
     // when the extension is unknown or mismapped, without mislabeling a legacy-encoded file.

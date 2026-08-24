@@ -24,7 +24,7 @@ use axum::{
     extract::{Query, State},
     http::{Request, Response, StatusCode, header::CONTENT_TYPE},
     response,
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Redirect},
     routing::{get, post},
     serve,
 };
@@ -58,8 +58,9 @@ impl Server {
     pub async fn run(self) -> Result<()> {
         let listener =
             TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
-        let url = format!("http://{}", listener.local_addr()?);
-        self.state.set_base_url(url.clone()).await;
+        let base = format!("http://{}", listener.local_addr()?);
+        self.state.set_base_url(base).await;
+        let url = self.state.file_url(&self.state.file_path);
         info!("Listening on {url}");
         info!("Watching {}", self.state.file_path.display());
 
@@ -93,8 +94,15 @@ impl Server {
     }
 }
 
-async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
-    Html(render_page(&state.file_path, &state.content.read().await, state.listing))
+/// A directory preview lives at the root; a file preview has its own path, so
+/// `/` sends visitors on to it. The redirect is temporary because the same port
+/// serves a different file on the next run, and a cached permanent redirect
+/// would keep pointing at the old one.
+async fn serve_index(State(state): State<Arc<AppState>>) -> response::Response {
+    if !state.listing {
+        return Redirect::temporary(&state.url_path(&state.file_path)).into_response();
+    }
+    Html(render_page(&state.file_path, &state.content.read().await, true)).into_response()
 }
 
 #[derive(Deserialize)]
