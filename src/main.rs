@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use gh_mdp::Server;
+use gh_mdp::{Server, default_markdown};
 use tracing::info;
 use tracing_subscriber::{EnvFilter, fmt::layer, prelude::*, registry};
 
@@ -47,15 +47,14 @@ async fn main() -> Result<()> {
 /// Find the markdown file to preview inside `dir`. Returns `None` when the directory
 /// has neither, in which case the directory itself is previewed as a file listing.
 fn resolve_markdown(dir: &Path, context: &str) -> Option<PathBuf> {
-    let found = ["index.md", "README.md"].into_iter().find_map(|name| {
-        let path = dir.join(name);
-        path.exists().then(|| {
-            info!("{context}, using {name}");
-            path
-        })
-    });
-    if found.is_none() {
-        info!("{context}, no index.md or README.md; showing directory listing");
+    match default_markdown(dir) {
+        Some(path) => {
+            info!("{context}, using {}", path.display());
+            Some(path)
+        }
+        None => {
+            info!("{context}, no index.md or README.md; showing directory listing");
+            None
+        }
     }
-    found
 }

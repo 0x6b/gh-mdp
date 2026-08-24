@@ -6,6 +6,8 @@ use pulldown_cmark::{
 use serde_yaml::{Value, from_str};
 use tracing::info;
 
+use super::util::escape_html;
+
 const OPTIONS: Options = Options::ENABLE_GFM
     .union(Options::ENABLE_TABLES)
     .union(Options::ENABLE_FOOTNOTES)
@@ -45,13 +47,6 @@ fn slugify(text: &str) -> String {
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("-")
-}
-
-fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;")
-        .replace('<', "&lt;")
-        .replace('>', "&gt;")
-        .replace('"', "&quot;")
 }
 
 fn yaml_value_to_html(value: &Value) -> String {

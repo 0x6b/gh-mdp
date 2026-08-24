@@ -50,6 +50,14 @@ pub fn encode_segment(name: &str) -> String {
         .collect()
 }
 
+/// Escape the ASCII characters that would otherwise be markup.
+pub fn escape_html(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
 pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
     // Valid UTF-8 with no NUL byte. Deciding from the bytes keeps source files readable even
     // when the extension is unknown or mismapped, without mislabeling a legacy-encoded file.

@@ -49,8 +49,15 @@ pub async fn watch(state: Arc<AppState>) {
     });
 
     while let Some(path) = notify_rx.recv().await {
-        if path.extension().is_some_and(|ext| ext == "md") && state.refresh(&path).await {
-            info!("File changed: {}", path.display());
+        if path.extension().is_some_and(|ext| ext == "md") {
+            if state.refresh(&path).await {
+                info!("File changed: {}", path.display());
+            }
+            // The listing of the directory holding this file renders it below
+            // the file list, so that page needs the same refresh.
+            if let Some(parent) = path.parent() {
+                state.refresh(parent).await;
+            }
         }
         if state.listing && state.refresh(&base_dir).await {
             info!("Directory changed: {}", base_dir.display());

@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use std::path::Path as FsPath;
+
 use axum::{
     extract::{OriginalUri, Path, State},
     http::{StatusCode, Uri, header::CONTENT_TYPE},
@@ -34,11 +36,7 @@ pub async fn serve_file(
         if let Some(location) = directory_redirect(&uri) {
             return Redirect::permanent(&location).into_response();
         }
-        let markdown = render_listing(&resolved, &state.base_dir);
-        let file = relative_display(&resolved);
-        let url = state.file_url(&resolved);
-        let html = render(&markdown, &file, &url);
-        return Html(render_page(&resolved, &html, true)).into_response();
+        return Html(render_directory(&state, &resolved)).into_response();
     }
 
     if resolved.extension().is_some_and(|ext| ext == "md") {
@@ -47,8 +45,13 @@ pub async fn serve_file(
         };
         let file = relative_display(&resolved);
         let url = state.file_url(&resolved);
-        return Html(render_page(&resolved, &render(&markdown, &file, &url), false))
-            .into_response();
+        return Html(render_page(
+            &resolved,
+            &state.base_dir,
+            &render(&markdown, &file, &url),
+            false,
+        ))
+        .into_response();
     }
 
     let Ok(content) = read(&resolved).await else {
@@ -56,6 +59,15 @@ pub async fn serve_file(
     };
 
     ([(CONTENT_TYPE, guess_content_type(&resolved, &content))], content).into_response()
+}
+
+/// Render a directory as a read-only listing page. Used for the root page and
+/// for any directory browsed into.
+pub fn render_directory(state: &AppState, dir: &FsPath) -> String {
+    let markdown = render_listing(dir, &state.base_dir);
+    let file = relative_display(dir);
+    let url = state.file_url(dir);
+    render_page(dir, &state.base_dir, &render(&markdown, &file, &url), true)
 }
 
 fn directory_redirect(uri: &Uri) -> Option<String> {
