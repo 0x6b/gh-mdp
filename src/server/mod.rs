@@ -29,6 +29,7 @@ use axum::{
     serve,
 };
 use files::{render_directory, serve_file};
+pub use listing::default_markdown;
 use open::that;
 use serde::{Deserialize, Serialize};
 use state::AppState;

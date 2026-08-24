@@ -181,9 +181,11 @@ impl AppState {
     /// actually sent, and `false` when the event was dropped as redundant (our
     /// own save, or unchanged content) so callers can avoid logging no-op events.
     pub async fn refresh(&self, changed_path: &Path) -> bool {
-        // Skip if this change was caused by our own save (infinite loop prevention)
+        // Skip if this change was caused by our own save (infinite loop prevention).
+        // Directory pages are read-only, so they cannot bounce and are refreshed
+        // even right after a save.
         let last_save = self.last_save_time.load(Ordering::SeqCst);
-        if now_millis().saturating_sub(last_save) < 500 {
+        if !changed_path.is_dir() && now_millis().saturating_sub(last_save) < 500 {
             return false;
         }
 
