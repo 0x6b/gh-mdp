@@ -20,7 +20,11 @@ use tokio::{
     sync::{RwLock, broadcast::Sender},
 };
 
-use super::{listing::render_listing, markdown::render, util::relative_display};
+use super::{
+    listing::render_listing,
+    markdown::render,
+    util::{encode_segment, relative_display},
+};
 
 #[derive(Serialize)]
 struct WsMessage<'a> {
@@ -72,6 +76,23 @@ fn task_bullet_len(trimmed: &str) -> usize {
     }
 
     0
+}
+
+/// Percent-encoded URL path for `file` relative to `base_dir`. Falls back to `/`
+/// for anything outside `base_dir`, which is never served anyway.
+fn url_path(base_dir: &Path, file: &Path) -> String {
+    file.strip_prefix(base_dir).map_or_else(
+        |_| "/".to_string(),
+        |rel| {
+            let path = rel.components().fold(String::new(), |mut path, c| {
+                path.push('/');
+                path.push_str(&encode_segment(&c.as_os_str().to_string_lossy()));
+                path
+            });
+            // A directory preview roots at itself, leaving nothing to strip.
+            if path.is_empty() { "/".to_string() } else { path }
+        },
+    )
 }
 
 pub struct AppState {
@@ -130,15 +151,17 @@ impl AppState {
         *self.content.write().await = render(&markdown, &file, &url);
     }
 
+    /// Absolute URL of `file`, e.g. `http://127.0.0.1:1234/docs/guide.md`.
     pub fn file_url(&self, file: &Path) -> String {
         let base = self.base_url.get().map_or("", string::String::as_str);
-        let path = if file == self.file_path {
-            "/".to_string()
-        } else {
-            file.strip_prefix(&self.base_dir)
-                .map_or_else(|_| "/".to_string(), |rel| format!("/{}", rel.display()))
-        };
-        format!("{base}{path}")
+        format!("{base}{}", self.url_path(file))
+    }
+
+    /// Path part of the URL that serves `file`, always rooted at `base_dir`. The
+    /// previewed file gets its own path (`/README.md`) rather than sharing `/`
+    /// with the directory it lives in, so every page has one canonical URL.
+    pub fn url_path(&self, file: &Path) -> String {
+        url_path(&self.base_dir, file)
     }
 
     pub async fn initial_message(&self) -> String {
@@ -273,5 +296,36 @@ impl AppState {
         }
 
         self.save(target, &result).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn path_of(base: &str, file: &str) -> String {
+        url_path(Path::new(base), Path::new(file))
+    }
+
+    #[test]
+    fn previewed_file_keeps_its_own_path() {
+        assert_eq!(path_of("/w", "/w/README.md"), "/README.md");
+        assert_eq!(path_of("/w", "/w/docs/guide.md"), "/docs/guide.md");
+    }
+
+    #[test]
+    fn directory_root_is_the_bare_slash() {
+        // A directory preview roots at itself, leaving nothing to strip.
+        assert_eq!(path_of("/w", "/w"), "/");
+    }
+
+    #[test]
+    fn segments_are_percent_encoded() {
+        assert_eq!(path_of("/w", "/w/my notes/a b.md"), "/my%20notes/a%20b.md");
+    }
+
+    #[test]
+    fn paths_outside_the_base_fall_back_to_the_root() {
+        assert_eq!(path_of("/w", "/elsewhere/a.md"), "/");
     }
 }

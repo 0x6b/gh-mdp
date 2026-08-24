@@ -60,6 +60,9 @@ has neither, a browsable file listing is shown instead. Listings skip dotfiles a
 entries, and update live as files come and go. Browsing into a subdirectory that has no markdown
 file shows its listing too. Listings are read-only, so the edit toggle is hidden.
 
+Every file is served at its own path below the directory it lives in, so previewing `README.md`
+opens `/README.md` and `/` redirects there. A directory preview is the one page served at `/`.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE) for details.

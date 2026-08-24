@@ -1,19 +1,6 @@
 use std::{fmt::Write, fs::read_dir, path::Path};
 
-use super::util::{build_gitignore, relative_display};
-
-/// Percent-encode a single path segment so it is safe inside a markdown link
-/// destination (spaces, parentheses, `#`, and non-ASCII bytes all need it).
-fn encode_segment(name: &str) -> String {
-    name.bytes()
-        .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                char::from(b).to_string()
-            }
-            _ => format!("%{b:02X}"),
-        })
-        .collect()
-}
+use super::util::{build_gitignore, encode_segment, relative_display};
 
 /// Backslash-escape ASCII punctuation that would otherwise be markdown syntax.
 fn escape_markdown(text: &str) -> String {
