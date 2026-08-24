@@ -74,11 +74,16 @@ pub fn render_listing(dir: &Path, base_dir: &Path) -> String {
     };
     let mut markdown = format!("# {}\n\n", escape_markdown(&title));
 
-    if dir != base_dir {
-        markdown.push_str("- [../](../)\n");
-    } else if dirs.is_empty() && files.is_empty() {
+    if dir == base_dir && dirs.is_empty() && files.is_empty() {
         markdown.push_str("_Empty directory._\n");
         return markdown;
+    }
+
+    // Wrapped so the stylesheet can set the entries in a monospace face without
+    // reaching the lists of the markdown file rendered below them.
+    markdown.push_str("<div class=\"file-list\">\n\n");
+    if dir != base_dir {
+        markdown.push_str("- [../](../)\n");
     }
 
     for name in &dirs {
@@ -87,6 +92,7 @@ pub fn render_listing(dir: &Path, base_dir: &Path) -> String {
     for name in &files {
         let _ = writeln!(markdown, "- [{}]({})", escape_markdown(name), encode_segment(name));
     }
+    markdown.push_str("\n</div>\n");
 
     if let Some(path) = default_markdown(dir)
         && let Ok(content) = read_to_string(path)
@@ -120,6 +126,7 @@ mod tests {
     fn a_directory_shows_its_readme_below_the_file_list() {
         let dir = fixture("readme", &[("README.md", "# Hello\n"), ("other.txt", "")]);
         let markdown = render_listing(&dir, &dir);
+        assert!(markdown.contains("<div class=\"file-list\">"), "{markdown}");
         assert!(markdown.contains("- [README\\.md](README.md)"), "{markdown}");
         assert!(markdown.ends_with("\n---\n\n# Hello\n"), "{markdown}");
     }
@@ -135,6 +142,7 @@ mod tests {
         let dir = fixture("plain", &[("notes.md", "# Notes\n")]);
         let markdown = render_listing(&dir, &dir);
         assert!(!markdown.contains("---"), "{markdown}");
-        assert!(markdown.ends_with("- [notes\\.md](notes.md)\n"), "{markdown}");
+        assert!(markdown.contains("- [notes\\.md](notes.md)\n"), "{markdown}");
+        assert!(markdown.ends_with("\n</div>\n"), "{markdown}");
     }
 }
