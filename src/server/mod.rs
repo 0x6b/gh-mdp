@@ -24,15 +24,14 @@ use axum::{
     extract::{Query, State},
     http::{Request, Response, StatusCode, header::CONTENT_TYPE},
     response,
-    response::{Html, IntoResponse, Redirect},
+    response::{Html, IntoResponse},
     routing::{get, post},
     serve,
 };
-use files::serve_file;
+use files::{render_directory, serve_file};
 use open::that;
 use serde::{Deserialize, Serialize};
 use state::AppState;
-use template::render_page;
 use tokio::{fs::read_to_string, net::TcpListener, spawn, sync::broadcast::channel};
 use tower_http::trace::TraceLayer;
 use tracing::{debug, debug_span, info};
@@ -94,15 +93,11 @@ impl Server {
     }
 }
 
-/// A directory preview lives at the root; a file preview has its own path, so
-/// `/` sends visitors on to it. The redirect is temporary because the same port
-/// serves a different file on the next run, and a cached permanent redirect
-/// would keep pointing at the old one.
-async fn serve_index(State(state): State<Arc<AppState>>) -> response::Response {
-    if !state.listing {
-        return Redirect::temporary(&state.url_path(&state.file_path)).into_response();
-    }
-    Html(render_page(&state.file_path, &state.content.read().await, true)).into_response()
+/// The root page lists the directory everything is served from. The previewed
+/// file has its own path, so `/` is free to be the index that the header path
+/// links back to.
+async fn serve_index(State(state): State<Arc<AppState>>) -> Html<String> {
+    Html(render_directory(&state, &state.base_dir))
 }
 
 #[derive(Deserialize)]

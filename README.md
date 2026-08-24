@@ -8,6 +8,7 @@ A GitHub Flavored Markdown live preview server that:
 - Serves relative links (images, files) from the markdown's directory
 - Renders linked markdown files with the same template
 - Falls back to a browsable directory listing when there is no `index.md` or `README.md`
+- Links each directory in the header path to its listing, for files nothing links to
 - Integrates all resources into a single binary (no internet connection required)
 - Supports in-browser editing with [OverType](https://overtype.dev/)
 - Can be used as a `gh` extension
@@ -61,7 +62,8 @@ entries, and update live as files come and go. Browsing into a subdirectory that
 file shows its listing too. Listings are read-only, so the edit toggle is hidden.
 
 Every file is served at its own path below the directory it lives in, so previewing `README.md`
-opens `/README.md` and `/` redirects there. A directory preview is the one page served at `/`.
+opens `/README.md`. The root path `/` lists that directory, and every directory in the header path
+links to its own listing, so files that nothing links to are still a couple of clicks away.
 
 ## License
 
