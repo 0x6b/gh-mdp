@@ -61,12 +61,12 @@ const ASSETS: &[Asset] = &[
         sha256: "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80",
     },
     Asset {
-        url: "https://cdn.jsdelivr.net/npm/overtype@2.1.1/dist/overtype.min.js",
+        url: "https://cdn.jsdelivr.net/npm/overtype@2.4.0/dist/overtype.min.js",
         name: "overtype.min.js",
-        sha256: "63ee3b87763979b37f614826117b52308fd791c486d36d4eb8fefe9f0fa41c8f",
+        sha256: "92c9ed3de0492c9e3caf10e99e85b5d12a47c05ba1be1617c7680abb9bac46c7",
     },
     Asset {
-        url: "https://raw.githubusercontent.com/panphora/overtype/1e474c251f9ef47f6c60288a974f5ed181c6194d/LICENSE",
+        url: "https://raw.githubusercontent.com/panphora/overtype/22742e0ba1537aa6c9974befe3b6c7cbcd04c2a6/LICENSE",
         name: "LICENSE-overtype",
         sha256: "436eecee4003545420d99f861f6b80050746aac96997906527573a6224f27b9d",
     },
