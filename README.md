@@ -12,6 +12,7 @@ A GitHub Flavored Markdown live preview server that:
 - Renders a directory's `index.md` or `README.md` below its file listing
 - Integrates all resources into a single binary (no internet connection required)
 - Supports in-browser editing with [OverType](https://overtype.dev/)
+- Exports the rendered preview as a self-contained, styled HTML file
 - Can be used as a `gh` extension
 
 ## Keyboard Shortcuts
