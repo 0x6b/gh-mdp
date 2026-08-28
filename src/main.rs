@@ -6,6 +6,24 @@ use gh_mdp::{Server, default_markdown};
 use tracing::info;
 use tracing_subscriber::{EnvFilter, fmt::layer, prelude::*, registry};
 
+const LICENSES: &str = concat!(
+    "gh-mdp\n======\n",
+    include_str!("../LICENSE"),
+    "\n\ngithub-markdown-css\n===================\n",
+    include_str!("../assets/LICENSE-github-markdown-css"),
+    "\n\nhighlight.js\n============\n",
+    include_str!("../assets/LICENSE-highlight.js"),
+    "\n\nMermaid\n=======\n",
+    include_str!("../assets/LICENSE-mermaid"),
+    "\n\nmorphdom\n========\n",
+    include_str!("../assets/LICENSE-morphdom"),
+    "\n\nOverType\n========\n",
+    include_str!("../assets/LICENSE-overtype"),
+    "\n\nOcticons\n========\n",
+    include_str!("../assets/LICENSE-octicons"),
+    "\n",
+);
+
 #[derive(Parser)]
 #[command(about, version)]
 pub struct Args {
@@ -18,6 +36,9 @@ pub struct Args {
     /// Don't open browser automatically
     #[arg(long)]
     pub no_open: bool,
+    /// Print licenses and exit
+    #[arg(long)]
+    pub licenses: bool,
 }
 
 #[tokio::main]
@@ -27,7 +48,12 @@ async fn main() -> Result<()> {
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
-    let Args { file, bind, no_open } = Args::parse();
+    let Args { file, bind, no_open, licenses } = Args::parse();
+
+    if licenses {
+        print!("{LICENSES}");
+        return Ok(());
+    }
 
     let file = match file {
         Some(f) if f.is_dir() => resolve_markdown(&f, "Directory specified").unwrap_or(f),

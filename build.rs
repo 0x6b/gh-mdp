@@ -70,6 +70,11 @@ const ASSETS: &[Asset] = &[
         name: "LICENSE-overtype",
         sha256: "436eecee4003545420d99f861f6b80050746aac96997906527573a6224f27b9d",
     },
+    Asset {
+        url: "https://raw.githubusercontent.com/primer/octicons/cc4e12df6ff8292447ba9141eaa2a6f6e1c59a85/LICENSE",
+        name: "LICENSE-octicons",
+        sha256: "da259c8bd0de62713ccdcf88910aebca810644f98c2c912bad814fc79ea778df",
+    },
 ];
 
 fn verify(asset: &Asset, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
