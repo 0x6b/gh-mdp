@@ -26,11 +26,11 @@
     .header-title a:hover { color: var(--accent); text-decoration-color: currentColor; }
     .header-sep { color: var(--text-muted); font-weight: 400; padding: 0 1px; }
     @media (prefers-color-scheme: dark) { .header-title { color: #fff; } }
-    .copy-btn, .mode-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
-    .copy-btn:hover, .mode-btn:hover { background: var(--bg); color: inherit; }
-    .copy-btn svg, .mode-btn svg { width: 16px; height: 16px; }
+    .copy-btn, .save-html-btn, .mode-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
+    .copy-btn:hover, .save-html-btn:hover, .mode-btn:hover { background: var(--bg); color: inherit; }
+    .copy-btn svg, .save-html-btn svg, .mode-btn svg { width: 16px; height: 16px; }
     .mode-btn.active { color: var(--accent); background: var(--bg); }
-    .mode-btn[hidden] { display: none; }
+    .save-html-btn[hidden], .mode-btn[hidden] { display: none; }
     .save-status { font-size: 12px; color: var(--text-muted); margin-left: auto; }
     .save-status.saving { color: var(--accent); }
     .save-status.saved { color: #2da44e; }
@@ -237,6 +237,9 @@
     <button class="copy-btn" id="copy-btn" title="Copy path">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"/><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"/></svg>
     </button>
+    <button class="save-html-btn" id="save-html-btn" title="Save HTML">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M7.25 1.75a.75.75 0 0 1 1.5 0v7.69l2.72-2.72a.749.749 0 1 1 1.06 1.06l-4 4a.75.75 0 0 1-1.06 0l-4-4a.749.749 0 1 1 1.06-1.06l2.72 2.72ZM1.5 12.25a.75.75 0 0 0-1.5 0v2A1.75 1.75 0 0 0 1.75 16h12.5A1.75 1.75 0 0 0 16 14.25v-2a.75.75 0 0 0-1.5 0v2a.25.25 0 0 1-.25.25H1.75a.25.25 0 0 1-.25-.25Z"/></svg>
+    </button>
     <button class="mode-btn" id="mode-btn" title="Edit"{{mode_btn_attrs}}>
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
     </button>
@@ -341,10 +344,12 @@
     const modeBtn = $('#mode-btn');
     const updateModeButton = (mode) => {
       if (mode === 'edit') {
+        $('#save-html-btn').hidden = true;
         modeBtn.title = 'Preview';
         modeBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 2c1.981 0 3.671.992 4.933 2.078 1.27 1.091 2.187 2.345 2.637 3.023a1.62 1.62 0 0 1 0 1.798c-.45.678-1.367 1.932-2.637 3.023C11.67 13.008 9.981 14 8 14c-1.981 0-3.671-.992-4.933-2.078C1.797 10.83.88 9.576.43 8.898a1.62 1.62 0 0 1 0-1.798c.45-.677 1.367-1.931 2.637-3.022C4.33 2.992 6.019 2 8 2ZM1.679 7.932a.12.12 0 0 0 0 .136c.411.622 1.241 1.75 2.366 2.717C5.176 11.758 6.527 12.5 8 12.5c1.473 0 2.825-.742 3.955-1.715 1.124-.967 1.954-2.096 2.366-2.717a.12.12 0 0 0 0-.136c-.412-.621-1.242-1.75-2.366-2.717C10.824 4.242 9.473 3.5 8 3.5c-1.473 0-2.824.742-3.955 1.715-1.124.967-1.954 2.096-2.366 2.717ZM8 10a2 2 0 1 1-.001-3.999A2 2 0 0 1 8 10Z"/></svg>';
         modeBtn.classList.add('active');
       } else {
+        $('#save-html-btn').hidden = false;
         modeBtn.title = 'Edit';
         modeBtn.innerHTML = '<svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>';
         modeBtn.classList.remove('active');
@@ -696,6 +701,117 @@
     buildToc();
     bindTaskCheckboxes();
     addCopyButtons();
+    $('#save-html-btn').onclick = async () => {
+      const btn = $('#save-html-btn');
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      try {
+        // Finish any diagram rendering before cloning the static preview.
+        await renderMermaid();
+
+        const asset = async path => {
+          const response = await fetch(path);
+          if (!response.ok) throw new Error(`Could not load ${path}`);
+          return response.text();
+        };
+        const [markdownCss, highlightLightCss, highlightDarkCss] = await Promise.all([
+          asset('/assets/github-markdown.min.css'),
+          asset('/assets/highlight-github.min.css'),
+          asset('/assets/highlight-github-dark.min.css')
+        ]);
+
+        const content = $('#content').cloneNode(true);
+        content.removeAttribute('id');
+        content.querySelectorAll('.code-copy-btn,.mermaid-fullsize-btn').forEach(el => el.remove());
+        content.querySelectorAll('.mermaid-container').forEach(el => el.removeAttribute('data-definition'));
+        content.querySelectorAll('input[data-task-index]').forEach(input => {
+          input.removeAttribute('data-task-index');
+          input.disabled = true;
+          const item = input.closest('li');
+          if (item) {
+            item.style.cursor = '';
+            if (!item.getAttribute('style')) item.removeAttribute('style');
+          }
+        });
+        const toc = $('#toc-list').cloneNode(true);
+        toc.removeAttribute('id');
+        toc.querySelectorAll('a.active').forEach(link => link.classList.remove('active'));
+        const tocTitle = $('.toc-title').cloneNode(true);
+
+        const sourceName = filePath.split(/[\\/]/).pop() || 'preview';
+        const title = sourceName.replace(/\.md$/i, '') || 'preview';
+        const doc = document.implementation.createHTMLDocument(title);
+        doc.documentElement.lang = document.documentElement.lang || 'en';
+        const charset = doc.createElement('meta');
+        charset.setAttribute('charset', 'UTF-8');
+        doc.head.prepend(charset);
+
+        const style = doc.createElement('style');
+        style.textContent = `${markdownCss}
+${highlightLightCss}
+@media (prefers-color-scheme: dark) { ${highlightDarkCss} }
+:root { color-scheme: light dark; --page-bg: #f6f8fa; --page-card: #fff; --page-border: #d0d7de; }
+@media (prefers-color-scheme: dark) { :root { --page-bg: #161b22; --page-card: #0d1117; --page-border: #30363d; } }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 32px 24px; background: var(--page-bg); }
+.export-layout { display: flex; width: 100%; max-width: 1400px; margin: 0 auto; gap: 32px; }
+.markdown-body { flex: 1; min-width: 0; min-height: calc(100vh - 64px); padding: 32px 40px; background: var(--page-card); border: 1px solid var(--page-border); border-radius: 6px; }
+.markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+.mermaid-container { margin: 16px 0; overflow-x: auto; }
+.toc-sidebar { width: 250px; flex-shrink: 0; }
+.toc { position: sticky; top: 32px; max-height: calc(100vh - 64px); overflow-y: auto; }
+.toc-title { margin-bottom: 12px; color: #656d76; }
+.toc-title svg { width: 16px; height: 16px; }
+.toc-list { margin: 0; padding: 0; list-style: none; }
+.toc-list li { margin: 0; }
+.toc-list a { display: block; padding: 4px 0; overflow: hidden; color: #656d76; font-size: 13px; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.toc-list a:hover { text-decoration: underline; }
+.toc-list a[data-level="1"], .toc-list a[data-level="2"] { padding-left: 8px; }
+.toc-list a[data-level="1"] { font-weight: 700; }
+.toc-list a[data-level="3"] { padding-left: 20px; }
+.toc-list a[data-level="4"] { padding-left: 32px; }
+.toc-list a[data-level="5"] { padding-left: 44px; }
+.toc-list a[data-level="6"] { padding-left: 56px; }
+@media (prefers-color-scheme: dark) { .toc-title, .toc-list a { color: #848d97; } }
+@media (max-width: 1100px) { .toc-sidebar { display: none; } }
+@media (max-width: 600px) { body { padding: 0; } .markdown-body { min-height: 100vh; padding: 24px 16px; border: 0; border-radius: 0; } }`;
+        doc.head.appendChild(style);
+        const layout = doc.createElement('div');
+        layout.className = 'export-layout';
+        layout.appendChild(doc.importNode(content, true));
+        if (toc.children.length) {
+          const sidebar = doc.createElement('aside');
+          sidebar.className = 'toc-sidebar';
+          const nav = doc.createElement('nav');
+          nav.className = 'toc';
+          nav.setAttribute('aria-label', 'Table of contents');
+          nav.append(doc.importNode(tocTitle, true), doc.importNode(toc, true));
+          sidebar.appendChild(nav);
+          layout.appendChild(sidebar);
+        }
+        doc.body.replaceChildren(layout);
+
+        const blob = new Blob(['<!DOCTYPE html>\n', doc.documentElement.outerHTML], { type: 'text/html;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${title}.html`;
+        link.click();
+        URL.revokeObjectURL(url);
+
+        btn.innerHTML = checkSvg;
+        btn.style.color = '#2da44e';
+      } catch (e) {
+        console.error('Save HTML error:', e);
+        btn.style.color = '#cf222e';
+      } finally {
+        setTimeout(() => {
+          btn.innerHTML = original;
+          btn.style.color = '';
+          btn.disabled = false;
+        }, 2000);
+      }
+    };
     $('#copy-btn').onclick = async () => {
       const btn = $('#copy-btn');
       const original = btn.innerHTML;
