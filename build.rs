@@ -51,12 +51,12 @@ const ASSETS: &[Asset] = &[
         sha256: "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3",
     },
     Asset {
-        url: "https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js",
+        url: "https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js",
         name: "mermaid.min.js",
-        sha256: "d0830a6c05546e9edb8fe20a8f545f3e0dc7c4c3134d584bad9c13a99d7a71e0",
+        sha256: "581ed7d74bd9048d0e3a91363927d72ef22942d7722546b27f7cc29e35390eb8",
     },
     Asset {
-        url: "https://raw.githubusercontent.com/mermaid-js/mermaid/bd85b51e2404102dbd04613a4891c017b425f803/LICENSE",
+        url: "https://raw.githubusercontent.com/mermaid-js/mermaid/dcb694ddb58dc5ad3502e7e903cac05fd812eac3/LICENSE",
         name: "LICENSE-mermaid",
         sha256: "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80",
     },
