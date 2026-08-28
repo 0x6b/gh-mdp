@@ -1,64 +1,111 @@
-use std::{error::Error, fs::File, io::copy, path::Path};
+use std::{error::Error, fs, io, path::Path};
 
 use reqwest::blocking::Client;
+use sha2::{Digest, Sha256};
 
-const ASSETS: &[(&str, &str)] = &[
-    (
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js",
-        "highlight.min.js",
-    ),
-    (
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css",
-        "highlight-github.min.css",
-    ),
-    (
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css",
-        "highlight-github-dark.min.css",
-    ),
-    (
-        "https://raw.githubusercontent.com/highlightjs/highlight.js/main/LICENSE",
-        "LICENSE-highlight.js",
-    ),
-    ("https://cdn.jsdelivr.net/npm/morphdom@2.7.7/dist/morphdom-umd.min.js", "morphdom.min.js"),
-    (
-        "https://raw.githubusercontent.com/patrick-steele-idem/morphdom/master/LICENSE",
-        "LICENSE-morphdom",
-    ),
-    (
-        "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.min.css",
-        "github-markdown.min.css",
-    ),
-    (
-        "https://raw.githubusercontent.com/sindresorhus/github-markdown-css/main/license",
-        "LICENSE-github-markdown-css",
-    ),
-    ("https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js", "mermaid.min.js"),
-    ("https://raw.githubusercontent.com/mermaid-js/mermaid/develop/LICENSE", "LICENSE-mermaid"),
-    ("https://cdn.jsdelivr.net/npm/overtype@2.1.1/dist/overtype.min.js", "overtype.min.js"),
-    ("https://raw.githubusercontent.com/panphora/overtype/main/LICENSE", "LICENSE-overtype"),
+struct Asset {
+    url: &'static str,
+    name: &'static str,
+    sha256: &'static str,
+}
+
+const ASSETS: &[Asset] = &[
+    Asset {
+        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js",
+        name: "highlight.min.js",
+        sha256: "c4a399dd6f488bc97a3546e3476747b3e714c99c57b9473154c6fb8d259b9381",
+    },
+    Asset {
+        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css",
+        name: "highlight-github.min.css",
+        sha256: "3a9a5def8b9c311e5ae43abde85c63133185eed4f0d9f67fea4b00a8308cf066",
+    },
+    Asset {
+        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css",
+        name: "highlight-github-dark.min.css",
+        sha256: "9f208d022102b1d0c7aebfecd8e42ca7997d5de636649d2b31ea63093d809019",
+    },
+    Asset {
+        url: "https://raw.githubusercontent.com/highlightjs/highlight.js/08cb242e7d4aee787114eb04cc7ab18314d82f92/LICENSE",
+        name: "LICENSE-highlight.js",
+        sha256: "6c081431591d9df696c82dc598fe1423765b8a299b200ed00b281afd0f64c490",
+    },
+    Asset {
+        url: "https://cdn.jsdelivr.net/npm/morphdom@2.7.7/dist/morphdom-umd.min.js",
+        name: "morphdom.min.js",
+        sha256: "ad1aaf5441eb2798b99dd03a41bea26562cd634dfc9845d3b8c5fbce560a6bac",
+    },
+    Asset {
+        url: "https://raw.githubusercontent.com/patrick-steele-idem/morphdom/a87fc2beea71308d96d228c51ed7c0949a91a492/LICENSE",
+        name: "LICENSE-morphdom",
+        sha256: "dc18a39627c8f2e5391255635bd1d6bbb02e91ba4a9bd3e13e53347b8c25e61a",
+    },
+    Asset {
+        url: "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.min.css",
+        name: "github-markdown.min.css",
+        sha256: "c47f5a601c095973e19c0a7d0418d35b2b209098955d2cc4136eb274f9083cc4",
+    },
+    Asset {
+        url: "https://raw.githubusercontent.com/sindresorhus/github-markdown-css/e771b613e93f868afd7ce2cdba2a2c7b6c649416/license",
+        name: "LICENSE-github-markdown-css",
+        sha256: "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3",
+    },
+    Asset {
+        url: "https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js",
+        name: "mermaid.min.js",
+        sha256: "d0830a6c05546e9edb8fe20a8f545f3e0dc7c4c3134d584bad9c13a99d7a71e0",
+    },
+    Asset {
+        url: "https://raw.githubusercontent.com/mermaid-js/mermaid/bd85b51e2404102dbd04613a4891c017b425f803/LICENSE",
+        name: "LICENSE-mermaid",
+        sha256: "ec9fb67dcb25eccc416ed56e1aab819222c805a2a4bfe4cb19e7556bf2ffde80",
+    },
+    Asset {
+        url: "https://cdn.jsdelivr.net/npm/overtype@2.1.1/dist/overtype.min.js",
+        name: "overtype.min.js",
+        sha256: "63ee3b87763979b37f614826117b52308fd791c486d36d4eb8fefe9f0fa41c8f",
+    },
+    Asset {
+        url: "https://raw.githubusercontent.com/panphora/overtype/1e474c251f9ef47f6c60288a974f5ed181c6194d/LICENSE",
+        name: "LICENSE-overtype",
+        sha256: "436eecee4003545420d99f861f6b80050746aac96997906527573a6224f27b9d",
+    },
 ];
+
+fn verify(asset: &Asset, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
+    let actual = format!("{:x}", Sha256::digest(bytes));
+    if actual != asset.sha256 {
+        return Err(io::Error::other(format!(
+            "SHA-256 mismatch for {}: expected {}, got {actual}",
+            asset.name, asset.sha256
+        ))
+        .into());
+    }
+    Ok(())
+}
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=build.rs");
     let assets_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
 
-    for (_, name) in ASSETS {
-        println!("cargo:rerun-if-changed=assets/{name}");
-    }
-
-    let missing: Vec<_> = ASSETS
-        .iter()
-        .filter(|(_, name)| !assets_dir.join(name).exists())
-        .collect();
-    if missing.is_empty() {
-        return Ok(());
+    for asset in ASSETS {
+        println!("cargo:rerun-if-changed=assets/{}", asset.name);
     }
 
     let client = Client::builder().user_agent("gh-mdp").build()?;
-    for (url, name) in missing {
-        println!("cargo:warning=Downloading {name}");
-        let blob = client.get(*url).send()?.bytes()?;
-        copy(&mut blob.as_ref(), &mut File::create(assets_dir.join(name))?)?;
+    for asset in ASSETS {
+        let path = assets_dir.join(asset.name);
+        if path.exists() {
+            match verify(asset, &fs::read(&path)?) {
+                Ok(()) => continue,
+                Err(error) => println!("cargo:warning=Refreshing {}: {error}", asset.name),
+            }
+        }
+
+        println!("cargo:warning=Downloading {}", asset.name);
+        let blob = client.get(asset.url).send()?.error_for_status()?.bytes()?;
+        verify(asset, &blob)?;
+        fs::write(path, blob)?;
     }
     Ok(())
 }
