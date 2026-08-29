@@ -1,4 +1,4 @@
-use std::{error::Error, fs, io, path::Path};
+use std::{error::Error, fmt::Write, fs, io, path::Path};
 
 use reqwest::blocking::Client;
 use sha2::{Digest, Sha256};
@@ -11,42 +11,42 @@ struct Asset {
 
 const ASSETS: &[Asset] = &[
     Asset {
-        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js",
+        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/highlight.min.js",
         name: "highlight.min.js",
-        sha256: "c4a399dd6f488bc97a3546e3476747b3e714c99c57b9473154c6fb8d259b9381",
+        sha256: "8ab71eb09c51f501e5e25157d9cff100e46cc29bcbfc744d0b746d451fca7f53",
     },
     Asset {
-        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css",
+        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github.min.css",
         name: "highlight-github.min.css",
         sha256: "3a9a5def8b9c311e5ae43abde85c63133185eed4f0d9f67fea4b00a8308cf066",
     },
     Asset {
-        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css",
+        url: "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.12.0/styles/github-dark.min.css",
         name: "highlight-github-dark.min.css",
         sha256: "9f208d022102b1d0c7aebfecd8e42ca7997d5de636649d2b31ea63093d809019",
     },
     Asset {
-        url: "https://raw.githubusercontent.com/highlightjs/highlight.js/08cb242e7d4aee787114eb04cc7ab18314d82f92/LICENSE",
+        url: "https://raw.githubusercontent.com/highlightjs/highlight.js/f7f7d3803bd898e37c017ffb881317f0cde04a70/LICENSE",
         name: "LICENSE-highlight.js",
         sha256: "6c081431591d9df696c82dc598fe1423765b8a299b200ed00b281afd0f64c490",
     },
     Asset {
-        url: "https://cdn.jsdelivr.net/npm/morphdom@2.7.7/dist/morphdom-umd.min.js",
+        url: "https://cdn.jsdelivr.net/npm/morphdom@2.7.8/dist/morphdom-umd.min.js",
         name: "morphdom.min.js",
-        sha256: "ad1aaf5441eb2798b99dd03a41bea26562cd634dfc9845d3b8c5fbce560a6bac",
+        sha256: "1bea1e3733860f75e851bf53e2cd97af8bd24d88e70f15cc643f4a737cd2fe2a",
     },
     Asset {
-        url: "https://raw.githubusercontent.com/patrick-steele-idem/morphdom/a87fc2beea71308d96d228c51ed7c0949a91a492/LICENSE",
+        url: "https://raw.githubusercontent.com/patrick-steele-idem/morphdom/8e004ca546b428dbe5a5e34a78b8af6179f85013/LICENSE",
         name: "LICENSE-morphdom",
         sha256: "dc18a39627c8f2e5391255635bd1d6bbb02e91ba4a9bd3e13e53347b8c25e61a",
     },
     Asset {
-        url: "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.8.1/github-markdown.min.css",
+        url: "https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.9.0/github-markdown.min.css",
         name: "github-markdown.min.css",
-        sha256: "c47f5a601c095973e19c0a7d0418d35b2b209098955d2cc4136eb274f9083cc4",
+        sha256: "3be3ba6f5b20f9e133688890012a1e20a0a6375efea59c214c424369d7694e3d",
     },
     Asset {
-        url: "https://raw.githubusercontent.com/sindresorhus/github-markdown-css/e771b613e93f868afd7ce2cdba2a2c7b6c649416/license",
+        url: "https://raw.githubusercontent.com/sindresorhus/github-markdown-css/265b22aa79815418195f453352456d5784bb7580/license",
         name: "LICENSE-github-markdown-css",
         sha256: "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3",
     },
@@ -78,7 +78,10 @@ const ASSETS: &[Asset] = &[
 ];
 
 fn verify(asset: &Asset, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
-    let actual = format!("{:x}", Sha256::digest(bytes));
+    let mut actual = String::with_capacity(64);
+    for byte in Sha256::digest(bytes) {
+        write!(actual, "{byte:02x}")?;
+    }
     if actual != asset.sha256 {
         return Err(io::Error::other(format!(
             "SHA-256 mismatch for {}: expected {}, got {actual}",
