@@ -54,6 +54,7 @@ Arguments:
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
       --no-open      Don't open browser automatically
+      --licenses     Print licenses and exit
   -h, --help         Print help
   -V, --version      Print version
 ```
@@ -74,7 +75,8 @@ MIT. See [LICENSE](./LICENSE) for details.
 
 ### Third-party assets
 
-The third-party assets are downloaded at build time and embedded into the final product. Please review the respective licenses for more details.
+The third-party assets and their licenses are downloaded at build time and embedded into the final
+product. Run `gh mdp --licenses` to print the license notices.
 
 | Asset                                                                      | License      | Source                                                                           |
 | -------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------- |
