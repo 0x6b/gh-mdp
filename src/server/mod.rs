@@ -58,10 +58,11 @@ impl Server {
     pub async fn run(self) -> Result<()> {
         let listener =
             TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
-        let base = format!("http://{}", listener.local_addr()?);
-        self.state.set_base_url(base).await;
+        let addr = listener.local_addr()?;
+        self.state.set_base_url(format!("http://{addr}")).await;
         let url = self.state.file_url(&self.state.file_path);
-        info!("Listening on {url}");
+        info!("Listening on {addr}");
+        info!("Serving {url}");
         info!("Watching {}", self.state.file_path.display());
 
         if self.open_browser {

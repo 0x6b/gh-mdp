@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use std::path::Path as FsPath;
+use std::{path::Path as FsPath, sync::Arc};
 
 use axum::{
     extract::{OriginalUri, Path, State},
