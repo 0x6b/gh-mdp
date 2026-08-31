@@ -105,6 +105,8 @@ pub fn render_listing(dir: &Path, base_dir: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(test)]
+    use std::fs::remove_dir_all;
     use std::{
         env::temp_dir,
         fs::{create_dir_all, write},
@@ -114,7 +116,7 @@ mod tests {
 
     fn fixture(name: &str, files: &[(&str, &str)]) -> PathBuf {
         let dir = temp_dir().join(format!("gh-mdp-listing-{name}"));
-        let _ = std::fs::remove_dir_all(&dir);
+        let _ = remove_dir_all(&dir);
         create_dir_all(&dir).unwrap();
         for (name, content) in files {
             write(dir.join(name), content).unwrap();

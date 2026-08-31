@@ -47,14 +47,11 @@ async fn main() -> Result<()> {
 /// Find the markdown file to preview inside `dir`. Returns `None` when the directory
 /// has neither, in which case the directory itself is previewed as a file listing.
 fn resolve_markdown(dir: &Path, context: &str) -> Option<PathBuf> {
-    match default_markdown(dir) {
-        Some(path) => {
-            info!("{context}, using {}", path.display());
-            Some(path)
-        }
-        None => {
-            info!("{context}, no index.md or README.md; showing directory listing");
-            None
-        }
+    if let Some(path) = default_markdown(dir) {
+        info!("{context}, using {}", path.display());
+        Some(path)
+    } else {
+        info!("{context}, no index.md or README.md; showing directory listing");
+        None
     }
 }
