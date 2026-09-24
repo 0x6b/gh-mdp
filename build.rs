@@ -94,6 +94,9 @@ fn verify(asset: &Asset, bytes: &[u8]) -> Result<(), Box<dyn Error>> {
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rerun-if-changed=build.rs");
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        tauri_build::build();
+    }
     let assets_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("assets");
 
     for asset in ASSETS {

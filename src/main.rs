@@ -39,6 +39,9 @@ pub struct Args {
     /// Print licenses and exit
     #[arg(long)]
     pub licenses: bool,
+    /// Open the preview in the gh-mdp app
+    #[arg(long, hide = true)]
+    pub app: bool,
 }
 
 #[tokio::main]
@@ -48,7 +51,7 @@ async fn main() -> Result<()> {
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
-    let Args { file, bind, no_open, licenses } = Args::parse();
+    let Args { file, bind, no_open, licenses, app } = Args::parse();
 
     if licenses {
         print!("{LICENSES}");
@@ -67,7 +70,53 @@ async fn main() -> Result<()> {
     .canonicalize()
     .context("Failed to resolve path")?;
 
+    if app {
+        #[cfg(windows)]
+        return run_app(file, &bind).await;
+
+        #[cfg(not(windows))]
+        bail!("The gh-mdp app is currently available on Windows only");
+    }
+
     Server::try_new(file, &bind, !no_open)?.run().await
+}
+
+#[cfg(windows)]
+async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    use windows_sys::Win32::System::Console::FreeConsole;
+
+    // This binary keeps the console subsystem for `gh mdp`. Explorer creates a
+    // console when a file association starts it, so detach only in app mode.
+    unsafe {
+        FreeConsole();
+    }
+
+    let server = Server::try_new(file, bind, false)?.bind().await?;
+    let page_url: tauri::Url = server.url().parse()?;
+    let server_origin = page_url.origin().ascii_serialization();
+    let server_task = tokio::spawn(server.run());
+
+    tauri::Builder::default()
+        .setup(move |app| {
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
+                .title("gh-mdp")
+                .inner_size(1200.0, 800.0)
+                .on_navigation(move |url| {
+                    if url.origin().ascii_serialization() == server_origin {
+                        true
+                    } else {
+                        let _ = open::that(url.as_str());
+                        false
+                    }
+                })
+                .build()?;
+            Ok(())
+        })
+        .run(tauri::generate_context!())?;
+
+    server_task.abort();
+    Ok(())
 }
 
 /// Find the markdown file to preview inside `dir`. Returns `None` when the directory

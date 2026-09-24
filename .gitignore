@@ -1,4 +1,5 @@
 /target
+/gen
 /assets/*.css
 /assets/*.js
 /assets/LICENSE*
