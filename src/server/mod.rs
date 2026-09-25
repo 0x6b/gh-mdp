@@ -45,6 +45,13 @@ pub struct Server {
     open_browser: bool,
 }
 
+pub struct BoundServer {
+    state: Arc<AppState>,
+    listener: TcpListener,
+    url: String,
+    open_browser: bool,
+}
+
 impl Server {
     pub fn try_new(file_path: PathBuf, bind: &str, open_browser: bool) -> Result<Self> {
         let (tx, _) = channel(16);
@@ -55,7 +62,7 @@ impl Server {
         })
     }
 
-    pub async fn run(self) -> Result<()> {
+    pub async fn bind(self) -> Result<BoundServer> {
         let listener =
             TcpListener::bind(SocketAddr::from((self.bind.parse::<IpAddr>()?, 0))).await?;
         let addr = listener.local_addr()?;
@@ -65,8 +72,27 @@ impl Server {
         info!("Serving {url}");
         info!("Watching {}", self.state.file_path.display());
 
+        Ok(BoundServer {
+            state: self.state,
+            listener,
+            url,
+            open_browser: self.open_browser,
+        })
+    }
+
+    pub async fn run(self) -> Result<()> {
+        self.bind().await?.run().await
+    }
+}
+
+impl BoundServer {
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+
+    pub async fn run(self) -> Result<()> {
         if self.open_browser {
-            let _ = that(&url);
+            let _ = that(&self.url);
         }
 
         spawn(watch(self.state.clone()));
@@ -91,7 +117,7 @@ impl Server {
             )
             .with_state(self.state);
 
-        Ok(serve(listener, app).await?)
+        Ok(serve(self.listener, app).await?)
     }
 }
 

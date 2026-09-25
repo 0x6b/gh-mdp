@@ -39,6 +39,9 @@ pub struct Args {
     /// Print licenses and exit
     #[arg(long)]
     pub licenses: bool,
+    /// Open the preview in the gh-mdp app
+    #[arg(long, hide = true)]
+    pub app: bool,
 }
 
 #[tokio::main]
@@ -48,7 +51,7 @@ async fn main() -> Result<()> {
         .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
-    let Args { file, bind, no_open, licenses } = Args::parse();
+    let Args { file, bind, no_open, licenses, app } = Args::parse();
 
     if licenses {
         print!("{LICENSES}");
@@ -67,7 +70,75 @@ async fn main() -> Result<()> {
     .canonicalize()
     .context("Failed to resolve path")?;
 
+    if app {
+        #[cfg(windows)]
+        return run_app(file, &bind).await;
+
+        #[cfg(not(windows))]
+        bail!("The gh-mdp app is currently available on Windows only");
+    }
+
     Server::try_new(file, &bind, !no_open)?.run().await
+}
+
+#[cfg(windows)]
+async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
+    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    use windows_sys::Win32::System::Console::FreeConsole;
+
+    // This binary keeps the console subsystem for `gh mdp`. Explorer creates a
+    // console when a file association starts it, so detach only in app mode.
+    unsafe {
+        FreeConsole();
+    }
+
+    let title = format!("{} - gh-mdp", file.display());
+    let base_dir =
+        if file.is_dir() { file.clone() } else { file.parent().unwrap_or(&file).to_path_buf() };
+    let server = Server::try_new(file, bind, false)?.bind().await?;
+    let page_url: tauri::Url = server.url().parse()?;
+    let server_origin = page_url.origin().ascii_serialization();
+    let server_task = tokio::spawn(server.run());
+
+    tauri::Builder::default()
+        .setup(move |app| {
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
+                .title(title)
+                .inner_size(1200.0, 800.0)
+                .on_navigation(move |url| {
+                    if url.origin().ascii_serialization() != server_origin {
+                        let _ = open::that(url.as_str());
+                        return false;
+                    }
+
+                    let Some(path) = resolve_app_path(&base_dir, url.path()) else {
+                        return true;
+                    };
+                    if path.is_file() && path.extension().is_none_or(|extension| extension != "md")
+                    {
+                        let _ = open::that(path);
+                        return false;
+                    }
+
+                    true
+                })
+                .build()?;
+            Ok(())
+        })
+        .run(tauri::generate_context!())?;
+
+    server_task.abort();
+    Ok(())
+}
+
+#[cfg(any(windows, test))]
+fn resolve_app_path(base_dir: &Path, url_path: &str) -> Option<PathBuf> {
+    let decoded = percent_encoding::percent_decode_str(url_path).decode_utf8().ok()?;
+    let resolved = base_dir
+        .join(decoded.strip_prefix('/').unwrap_or(&decoded))
+        .canonicalize()
+        .ok()?;
+    resolved.starts_with(base_dir).then_some(resolved)
 }
 
 /// Find the markdown file to preview inside `dir`. Returns `None` when the directory
@@ -79,5 +150,19 @@ fn resolve_markdown(dir: &Path, context: &str) -> Option<PathBuf> {
     } else {
         info!("{context}, no index.md or README.md; showing directory listing");
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_paths_are_decoded_and_confined_to_the_served_directory() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).canonicalize().unwrap();
+        let readme = base.join("README.md").canonicalize().unwrap();
+
+        assert_eq!(resolve_app_path(&base, "/README%2Emd"), Some(readme));
+        assert_eq!(resolve_app_path(&base, "/%2E%2E"), None);
     }
 }

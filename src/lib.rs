@@ -1,3 +1,3 @@
 mod server;
 
-pub use server::{Server, default_markdown};
+pub use server::{BoundServer, Server, default_markdown};

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "gh-mdp",
+  "version": "1.0.0",
+  "identifier": "com.github.0x6b.gh-mdp",
+  "app": {
+    "windows": []
+  },
+  "bundle": {
+    "active": false
+  }
+}

@@ -40,6 +40,16 @@ $ gh extension install 0x6b/gh-mdp
 $ gh extension upgrade 0x6b/gh-mdp
 ```
 
+### Windows app preview (experimental)
+
+The Windows binary can open a preview in its own app window while the regular `gh mdp` command keeps opening the default browser. Links to local non-Markdown files open with their associated Windows app.
+
+```console
+gh-mdp.exe --app README.md
+```
+
+To make `gh-mdp` available for `.md` files, place [`scripts/register-file-association.cmd`](scripts/register-file-association.cmd) and [`scripts/unregister-file-association.cmd`](scripts/unregister-file-association.cmd) next to `gh-mdp.exe`. Run the registration script, then select `gh-mdp` once from Windows' **Open with** or **Default apps** UI. Registration is per-user and does not require administrator privileges.
+
 ## Usage
 
 ```console
@@ -59,15 +69,9 @@ Options:
   -V, --version      Print version
 ```
 
-When a directory is specified, it looks for `index.md` first, then `README.md`. If the directory
-has neither, a browsable file listing is shown instead. Listings skip dotfiles and gitignored
-entries, and update live as files come and go. Any directory browsed into shows the same
-listing, with its own `index.md` or `README.md` rendered below the file list. Listings are
-read-only, so the edit toggle is hidden; edit such a file on its own page.
+When a directory is specified, it looks for `index.md` first, then `README.md`. If the directory has neither, a browsable file listing is shown instead. Listings skip dotfiles and gitignored entries, and update live as files come and go. Any directory browsed into shows the same listing, with its own `index.md` or `README.md` rendered below the file list. Listings are read-only, so the edit toggle is hidden; edit such a file on its own page.
 
-Every file is served at its own path below the directory it lives in, so previewing `README.md`
-opens `/README.md`. The root path `/` lists that directory, and every directory in the header path
-links to its own listing, so files that nothing links to are still a couple of clicks away.
+Every file is served at its own path below the directory it lives in, so previewing `README.md` opens `/README.md`. The root path `/` lists that directory, and every directory in the header path links to its own listing, so files that nothing links to are still a couple of clicks away.
 
 ## License
 
@@ -75,8 +79,7 @@ MIT. See [LICENSE](./LICENSE) for details.
 
 ### Third-party assets
 
-The third-party assets and their licenses are downloaded at build time and embedded into the final
-product. Run `gh mdp --licenses` to print the license notices.
+The third-party assets and their licenses are downloaded at build time and embedded into the final product. Run `gh mdp --licenses` to print the license notices.
 
 | Asset                                                                      | License      | Source                                                                           |
 | -------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------- |
