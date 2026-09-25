@@ -42,7 +42,7 @@ $ gh extension upgrade 0x6b/gh-mdp
 
 ### Windows app preview (experimental)
 
-The Windows binary can open a preview in its own app window while the regular `gh mdp` command keeps opening the default browser.
+The Windows binary can open a preview in its own app window while the regular `gh mdp` command keeps opening the default browser. Links to local non-Markdown files open with their associated Windows app.
 
 ```console
 gh-mdp.exe --app README.md

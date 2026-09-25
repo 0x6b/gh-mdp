@@ -1353,6 +1353,7 @@ dependencies = [
  "mime_guess",
  "notify-debouncer-mini",
  "open",
+ "percent-encoding",
  "pulldown-cmark",
  "reqwest",
  "serde",

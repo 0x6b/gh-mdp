@@ -93,6 +93,8 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
     }
 
     let title = format!("{} - gh-mdp", file.display());
+    let base_dir =
+        if file.is_dir() { file.clone() } else { file.parent().unwrap_or(&file).to_path_buf() };
     let server = Server::try_new(file, bind, false)?.bind().await?;
     let page_url: tauri::Url = server.url().parse()?;
     let server_origin = page_url.origin().ascii_serialization();
@@ -104,12 +106,21 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
                 .title(title)
                 .inner_size(1200.0, 800.0)
                 .on_navigation(move |url| {
-                    if url.origin().ascii_serialization() == server_origin {
-                        true
-                    } else {
+                    if url.origin().ascii_serialization() != server_origin {
                         let _ = open::that(url.as_str());
-                        false
+                        return false;
                     }
+
+                    let Some(path) = resolve_app_path(&base_dir, url.path()) else {
+                        return true;
+                    };
+                    if path.is_file() && path.extension().is_none_or(|extension| extension != "md")
+                    {
+                        let _ = open::that(path);
+                        return false;
+                    }
+
+                    true
                 })
                 .build()?;
             Ok(())
@@ -118,6 +129,16 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
 
     server_task.abort();
     Ok(())
+}
+
+#[cfg(any(windows, test))]
+fn resolve_app_path(base_dir: &Path, url_path: &str) -> Option<PathBuf> {
+    let decoded = percent_encoding::percent_decode_str(url_path).decode_utf8().ok()?;
+    let resolved = base_dir
+        .join(decoded.strip_prefix('/').unwrap_or(&decoded))
+        .canonicalize()
+        .ok()?;
+    resolved.starts_with(base_dir).then_some(resolved)
 }
 
 /// Find the markdown file to preview inside `dir`. Returns `None` when the directory
@@ -129,5 +150,19 @@ fn resolve_markdown(dir: &Path, context: &str) -> Option<PathBuf> {
     } else {
         info!("{context}, no index.md or README.md; showing directory listing");
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_paths_are_decoded_and_confined_to_the_served_directory() {
+        let base = Path::new(env!("CARGO_MANIFEST_DIR")).canonicalize().unwrap();
+        let readme = base.join("README.md").canonicalize().unwrap();
+
+        assert_eq!(resolve_app_path(&base, "/README%2Emd"), Some(readme));
+        assert_eq!(resolve_app_path(&base, "/%2E%2E"), None);
     }
 }

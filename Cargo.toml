@@ -44,6 +44,7 @@ serde_yaml = "0.9.34"
 
 # Open URL
 open = "5.4.2"
+percent-encoding = "2.3.2"
 
 [target.'cfg(windows)'.dependencies]
 tauri = { version = "2.11.6", default-features = false, features = ["common-controls-v6", "wry"] }
