@@ -92,6 +92,7 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
         FreeConsole();
     }
 
+    let title = format!("{} - gh-mdp", file.display());
     let server = Server::try_new(file, bind, false)?.bind().await?;
     let page_url: tauri::Url = server.url().parse()?;
     let server_origin = page_url.origin().ascii_serialization();
@@ -100,7 +101,7 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
     tauri::Builder::default()
         .setup(move |app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
-                .title("gh-mdp")
+                .title(title)
                 .inner_size(1200.0, 800.0)
                 .on_navigation(move |url| {
                     if url.origin().ascii_serialization() == server_origin {
