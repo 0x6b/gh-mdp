@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   release-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable @ 2025-12-08
@@ -72,12 +72,17 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable @ 2025-12-08
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
       - name: Build for x86_64 Windows
         run: bash ./scripts/build.sh
         env:
           TARGET_TRIPLE: x86_64-pc-windows-msvc
           OS_ARCH: windows-amd64.exe
+      - name: Build for ARM64 Windows
+        run: bash ./scripts/build.sh
+        env:
+          TARGET_TRIPLE: aarch64-pc-windows-msvc
+          OS_ARCH: windows-arm64.exe
       - name: Upload release artifact
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
@@ -85,3 +90,4 @@ jobs:
           prerelease: false
           files: |
             dist/windows-amd64.exe
+            dist/windows-arm64.exe
