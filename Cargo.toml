@@ -48,7 +48,7 @@ percent-encoding = "2.3.2"
 
 [target.'cfg(windows)'.dependencies]
 tauri = { version = "2.11.6", default-features = false, features = ["common-controls-v6", "wry"] }
-windows-sys = { version = "0.61.2", features = ["Win32_System_Console"] }
+windows-sys = { version = "0.61.2", features = ["Win32_System_Console", "Win32_System_Threading"] }
 
 [build-dependencies]
 reqwest = { version = "0.13.4", features = ["blocking"] }
