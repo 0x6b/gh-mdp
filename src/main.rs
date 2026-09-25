@@ -83,8 +83,9 @@ async fn main() -> Result<()> {
 
 #[cfg(windows)]
 async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
-    use tauri::{WebviewUrl, WebviewWindowBuilder};
+    use tauri::{WebviewUrl, WebviewWindowBuilder, WindowEvent};
     use windows_sys::Win32::System::Console::FreeConsole;
+    use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
 
     // This binary keeps the console subsystem for `gh mdp`. Explorer creates a
     // console when a file association starts it, so detach only in app mode.
@@ -101,6 +102,16 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
     let server_task = tokio::spawn(server.run());
 
     tauri::Builder::default()
+        .on_window_event(|_, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                // ExitProcess can deadlock while detaching third-party DLLs. Keep
+                // Tauri's event loop alive until TerminateProcess stops the process.
+                api.prevent_close();
+                std::thread::spawn(|| unsafe {
+                    TerminateProcess(GetCurrentProcess(), 0);
+                });
+            }
+        })
         .setup(move |app| {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
                 .title(title)
