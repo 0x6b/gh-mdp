@@ -58,6 +58,28 @@ pub fn escape_html(s: &str) -> String {
         .replace('"', "&quot;")
 }
 
+/// Format a path for display without Windows' extended-length path prefix.
+/// The underlying canonical path retains the prefix for filesystem operations.
+pub fn display_path(path: &Path) -> String {
+    let path = path.display().to_string();
+    if let Some(path) = path.strip_prefix(r"\\?\UNC\") {
+        format!(r"\\{path}")
+    } else {
+        path.strip_prefix(r"\\?\").unwrap_or(&path).to_string()
+    }
+}
+
+/// Format a page/window title as `name - full parent path`.
+pub fn page_title(path: &Path) -> String {
+    let Some(name) = path.file_name() else {
+        return display_path(path);
+    };
+    let Some(parent) = path.parent() else {
+        return name.to_string_lossy().into_owned();
+    };
+    format!("{} - {}", name.to_string_lossy(), display_path(parent))
+}
+
 pub fn guess_content_type(path: &Path, content: &[u8]) -> String {
     // Valid UTF-8 with no NUL byte. Deciding from the bytes keeps source files readable even
     // when the extension is unknown or mismapped, without mislabeling a legacy-encoded file.
@@ -122,6 +144,20 @@ mod tests {
 
     fn ct(name: &str, content: &[u8]) -> String {
         guess_content_type(Path::new(name), content)
+    }
+
+    #[test]
+    fn windows_extended_length_prefix_is_hidden_for_display() {
+        assert_eq!(display_path(Path::new(r"\\?\C:\Users\佐藤\notes")), r"C:\Users\佐藤\notes");
+        assert_eq!(display_path(Path::new(r"\\?\UNC\server\share\notes")), r"\\server\share\notes");
+    }
+
+    #[test]
+    fn page_title_contains_the_name_and_full_parent_path() {
+        assert_eq!(
+            page_title(Path::new("/home/user/notes/README.md")),
+            "README.md - /home/user/notes"
+        );
     }
 
     #[test]

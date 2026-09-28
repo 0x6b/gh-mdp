@@ -1,6 +1,6 @@
 use std::{fmt::Write, path::Path};
 
-use super::util::{encode_segment, escape_html};
+use super::util::{display_path, encode_segment, escape_html, page_title};
 
 const TEMPLATE: &str = include_str!("../../assets/template.html");
 
@@ -9,6 +9,7 @@ const TEMPLATE: &str = include_str!("../../assets/template.html");
 /// no underlying markdown file to save back to.
 pub fn render_page(file_path: &Path, base_dir: &Path, content: &str, read_only: bool) -> String {
     TEMPLATE
+        .replace("{{page_title}}", &escape_html(&page_title(file_path)))
         .replace("{{file_path}}", &escape_html(&file_path.display().to_string()))
         .replace("{{breadcrumb}}", &breadcrumb(file_path, base_dir))
         .replace("{{mode_btn_attrs}}", if read_only { " hidden" } else { "" })
@@ -20,7 +21,7 @@ pub fn render_page(file_path: &Path, base_dir: &Path, content: &str, read_only: 
 /// first crumb instead of becoming a dead link. The last segment is the page
 /// itself and is left as text.
 fn breadcrumb(file_path: &Path, base_dir: &Path) -> String {
-    let mut html = format!("<a href=\"/\">{}</a>", escape_html(&base_dir.display().to_string()));
+    let mut html = format!("<a href=\"/\">{}</a>", escape_html(&display_path(base_dir)));
     let Ok(rel) = file_path.strip_prefix(base_dir) else {
         return html;
     };
