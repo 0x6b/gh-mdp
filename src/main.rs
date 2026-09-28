@@ -93,7 +93,7 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
         FreeConsole();
     }
 
-    let title = format!("{} - gh-mdp", file.display());
+    let title = gh_mdp::page_title(&file);
     let base_dir =
         if file.is_dir() { file.clone() } else { file.parent().unwrap_or(&file).to_path_buf() };
     let server = Server::try_new(file, bind, false)?.bind().await?;

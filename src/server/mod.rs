@@ -36,6 +36,7 @@ use state::AppState;
 use tokio::{fs::read_to_string, net::TcpListener, spawn, sync::broadcast::channel};
 use tower_http::trace::TraceLayer;
 use tracing::{debug, debug_span, info};
+pub use util::{display_path, page_title};
 use watcher::watch;
 use websocket::upgrade;
 
