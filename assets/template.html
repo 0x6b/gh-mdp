@@ -26,11 +26,12 @@
     .header-title a:hover { color: var(--accent); text-decoration-color: currentColor; }
     .header-sep { color: var(--text-muted); font-weight: 400; padding: 0 1px; }
     @media (prefers-color-scheme: dark) { .header-title { color: #fff; } }
-    .copy-btn, .save-html-btn, .mode-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
-    .copy-btn:hover, .save-html-btn:hover, .mode-btn:hover { background: var(--bg); color: inherit; }
-    .copy-btn svg, .save-html-btn svg, .mode-btn svg { width: 16px; height: 16px; }
-    .mode-btn.active { color: var(--accent); background: var(--bg); }
-    .save-html-btn[hidden], .mode-btn[hidden] { display: none; }
+    .copy-btn, .save-html-btn, .mode-btn, .toc-btn { background: none; border: none; border-radius: 6px; padding: 4px; cursor: pointer; display: flex; align-items: center; color: #8b949e; }
+    .copy-btn:hover, .save-html-btn:hover, .mode-btn:hover, .toc-btn:hover { background: var(--bg); color: inherit; }
+    .copy-btn svg, .save-html-btn svg, .mode-btn svg, .toc-btn svg { width: 16px; height: 16px; }
+    .mode-btn.active, .toc-btn.active { color: var(--accent); background: var(--bg); }
+    .save-html-btn[hidden], .mode-btn[hidden], .toc-btn[hidden] { display: none; }
+    .toc-btn { display: none; }
     .save-status { font-size: 12px; color: var(--text-muted); margin-left: auto; }
     .save-status.saving { color: var(--accent); }
     .save-status.saved { color: #2da44e; }
@@ -71,7 +72,10 @@
     .toc-list a[data-level="5"] { padding-left: 44px; }
     .toc-list a[data-level="6"] { padding-left: 56px; }
     @media (max-width: 1100px) {
-      .toc-sidebar { display: none; }
+      .toc-btn { display: flex; }
+      .toc-sidebar { display: none; position: fixed; right: 0; bottom: 0; z-index: 99; width: 280px; max-width: 100vw; padding: 16px; overflow-y: auto; background: var(--card); border-left: 1px solid var(--border); box-shadow: -4px 0 16px rgba(0, 0, 0, 0.15); }
+      body.toc-open .toc-sidebar { display: block; }
+      .toc { position: static; max-height: none; overflow: visible; }
       .layout { padding: 32px 16px; }
     }
 
@@ -244,6 +248,9 @@
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
     </button>
     <span class="save-status" id="save-status"></span>
+    <button class="toc-btn" id="toc-btn" title="Table of contents">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
+    </button>
   </header>
   <div class="layout">
     <main class="main-content">
@@ -601,12 +608,28 @@
             target.scrollIntoView({ behavior: 'smooth' });
             history.pushState(null, '', `#${id}`);
           }
+          setTocOpen(false);
         };
         li.appendChild(a);
         tocList.appendChild(li);
       });
+      $('#toc-btn').hidden = !tocList.children.length;
       updateActiveToc();
     };
+
+    // Narrow-screen TOC panel
+    const setTocOpen = open => {
+      document.body.classList.toggle('toc-open', open);
+      $('#toc-btn').classList.toggle('active', open);
+      if (open) $('.toc-sidebar').style.top = `${$('.header').offsetHeight}px`;
+    };
+    $('#toc-btn').onclick = () => setTocOpen(!document.body.classList.contains('toc-open'));
+    document.addEventListener('click', e => {
+      if (document.body.classList.contains('toc-open') && !e.target.closest('.toc-sidebar, #toc-btn')) setTocOpen(false);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') setTocOpen(false);
+    });
 
     // Scroll spy for TOC
     let tocLinks = [];
