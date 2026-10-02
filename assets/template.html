@@ -40,7 +40,7 @@
     .main-content { flex: 1; min-width: 0; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
     .markdown-body.html-preview-container { padding: 0; overflow: hidden; }
-    #html-preview { display: block; width: 100%; height: calc(100vh - 152px); min-height: 500px; border: 0; background: #fff; }
+    #html-preview { display: block; width: 100%; height: 100vh; border: 0; background: #fff; }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .file-list a { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .anchor { scroll-margin-top: 70px; }
@@ -80,6 +80,17 @@
       .toc { position: static; max-height: none; overflow: visible; }
       .layout { padding: 32px 16px; }
     }
+    body.html-preview-page { overflow: hidden; }
+    body.html-preview-page .header { position: fixed; top: 16px; right: 16px; z-index: 101; padding: 0; border: 0; background: none; }
+    body.html-preview-page .header > :not(.toc-btn) { display: none; }
+    body.html-preview-page .header .toc-btn { display: flex; padding: 8px; color: var(--text); background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+    body.html-preview-page .header .toc-btn[hidden] { display: none; }
+    body.html-preview-page .layout { display: block; max-width: none; height: 100vh; padding: 0; }
+    body.html-preview-page .main-content, body.html-preview-page .markdown-body { width: 100%; height: 100%; }
+    body.html-preview-page .markdown-body { min-height: 0; border: 0; border-radius: 0; }
+    body.html-preview-page .toc-sidebar { display: none; position: fixed; top: 64px; right: 16px; bottom: auto; z-index: 100; width: 280px; max-width: calc(100vw - 32px); max-height: calc(100vh - 80px); padding: 16px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+    body.html-preview-page.toc-open .toc-sidebar { display: block; }
+    body.html-preview-page .toc { position: static; max-height: none; overflow: visible; }
 
     /* Mermaid diagram container */
     .mermaid-container {
@@ -282,6 +293,7 @@
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const htmlPreview = $('#html-preview');
     if (htmlPreview) {
+      document.body.classList.add('html-preview-page');
       htmlPreview.parentElement.classList.add('html-preview-container');
       $('#save-html-btn').hidden = true;
     }
@@ -613,6 +625,7 @@
       if (!htmlPreview || boundHtmlDocuments.has(context.doc)) return;
       boundHtmlDocuments.add(context.doc);
       context.doc.addEventListener('click', e => {
+        setTocOpen(false);
         if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
         const link = e.target.closest('a[href]');
         if (!link || link.target || link.hasAttribute('download')) return;
@@ -622,6 +635,9 @@
         e.preventDefault();
         url.searchParams.delete('__gh_mdp_raw');
         window.location.assign(url);
+      });
+      context.doc.addEventListener('keydown', e => {
+        if (e.key === 'Escape') setTocOpen(false);
       });
     };
     var buildToc = () => {
@@ -672,7 +688,7 @@
     const setTocOpen = open => {
       document.body.classList.toggle('toc-open', open);
       $('#toc-btn').classList.toggle('active', open);
-      if (open) $('.toc-sidebar').style.top = `${$('.header').offsetHeight}px`;
+      if (open && !htmlPreview) $('.toc-sidebar').style.top = `${$('.header').offsetHeight}px`;
     };
     $('#toc-btn').onclick = () => setTocOpen(!document.body.classList.contains('toc-open'));
     document.addEventListener('click', e => {
