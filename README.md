@@ -73,7 +73,7 @@ Options:
 
 When a directory is specified, it looks for `index.md` first, then `README.md`. If the directory has neither, a browsable file listing is shown instead. Listings skip dotfiles and gitignored entries, and update live as files come and go. Any directory browsed into shows the same listing, with its own `index.md` or `README.md` rendered below the file list. Listings are read-only, so the edit toggle is hidden; edit such a file on its own page.
 
-Passing an `.html`, `.htm`, `.xhtml`, or `.xht` file displays the document edge to edge with its own styles and scripts intact. Use the floating button in the upper-right corner to open a table of contents generated from the document's `h1` through `h6` headings.
+Passing an `.html`, `.htm`, `.xhtml`, or `.xht` file displays the document edge to edge with its own styles and scripts intact. Use the floating button in the upper-right corner to open a table of contents generated from the document's `h1` through `h6` headings or return to the parent directory listing.
 
 Every file is served at its own path below the directory it lives in, so previewing `README.md` opens `/README.md`. The root path `/` lists that directory, and every directory in the header path links to its own listing, so files that nothing links to are still a couple of clicks away.
 
