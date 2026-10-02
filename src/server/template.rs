@@ -16,6 +16,14 @@ pub fn render_page(file_path: &Path, base_dir: &Path, content: &str, read_only: 
         .replace("{{content}}", content)
 }
 
+pub fn render_html_page(file_path: &Path, base_dir: &Path, raw_url: &str) -> String {
+    let content = format!(
+        "<iframe id=\"html-preview\" src=\"{}\" title=\"HTML preview\"></iframe>",
+        escape_html(raw_url)
+    );
+    render_page(file_path, base_dir, &content, true)
+}
+
 /// The header path, with each directory at or below `base_dir` linked to its
 /// listing. Nothing above `base_dir` is served, so that part stays inside the
 /// first crumb instead of becoming a dead link. The last segment is the page
@@ -69,5 +77,19 @@ mod tests {
             crumb("/w", "/w/a&b/c d.md"),
             r#"<a href="/">/w</a><span class="header-sep">/</span><a href="/a%26b/">a&amp;b</a><span class="header-sep">/</span>c d.md"#
         );
+    }
+
+    #[test]
+    fn html_page_loads_the_raw_document_in_an_iframe() {
+        let html = render_html_page(
+            Path::new("/w/preview.html"),
+            Path::new("/w"),
+            "/preview.html?theme=dark&__gh_mdp_raw=1",
+        );
+
+        assert!(html.contains(
+            r#"<iframe id="html-preview" src="/preview.html?theme=dark&amp;__gh_mdp_raw=1" title="HTML preview"></iframe>"#
+        ));
+        assert!(html.contains(r#"class="mode-btn" id="mode-btn" title="Edit" hidden"#));
     }
 }

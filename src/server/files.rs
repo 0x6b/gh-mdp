@@ -11,7 +11,7 @@ use super::{
     listing::render_listing,
     markdown::render,
     state::AppState,
-    template::render_page,
+    template::{render_html_page, render_page},
     util::{guess_content_type, relative_display, resolve_safe_path},
 };
 
@@ -52,6 +52,11 @@ pub async fn serve_file(
         .into_response();
     }
 
+    if is_html_file(&resolved) && !is_raw_html_request(&uri) {
+        let raw_url = raw_html_url(&state.url_path(&resolved), &uri);
+        return Html(render_html_page(&resolved, &state.base_dir, &raw_url)).into_response();
+    }
+
     let Ok(content) = read(&resolved).await else {
         return StatusCode::NOT_FOUND.into_response();
     };
@@ -81,6 +86,27 @@ fn directory_redirect(uri: &Uri) -> Option<String> {
     Some(location)
 }
 
+fn is_html_file(path: &FsPath) -> bool {
+    path.extension().is_some_and(|extension| {
+        extension.eq_ignore_ascii_case("html")
+            || extension.eq_ignore_ascii_case("htm")
+            || extension.eq_ignore_ascii_case("xhtml")
+            || extension.eq_ignore_ascii_case("xht")
+    })
+}
+
+fn is_raw_html_request(uri: &Uri) -> bool {
+    uri.query()
+        .is_some_and(|query| query.split('&').any(|param| param == "__gh_mdp_raw=1"))
+}
+
+fn raw_html_url(path: &str, uri: &Uri) -> String {
+    match uri.query() {
+        Some(query) => format!("{path}?{query}&__gh_mdp_raw=1"),
+        None => format!("{path}?__gh_mdp_raw=1"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -101,5 +127,34 @@ mod tests {
     fn directory_url_with_trailing_slash_is_unchanged() {
         let uri = "/docs/".parse().unwrap();
         assert_eq!(directory_redirect(&uri), None);
+    }
+
+    #[test]
+    fn html_file_extensions_include_xhtml_but_not_similar_names() {
+        assert!(is_html_file(FsPath::new("preview.HTML")));
+        assert!(is_html_file(FsPath::new("preview.htm")));
+        assert!(is_html_file(FsPath::new("preview.xhtml")));
+        assert!(is_html_file(FsPath::new("preview.XHT")));
+        assert!(!is_html_file(FsPath::new("preview.xhtm")));
+    }
+
+    #[test]
+    fn raw_html_query_is_an_exact_parameter() {
+        assert!(is_raw_html_request(&"/preview.html?__gh_mdp_raw=1".parse().unwrap()));
+        assert!(is_raw_html_request(&"/preview.html?theme=dark&__gh_mdp_raw=1".parse().unwrap()));
+        assert!(!is_raw_html_request(&"/preview.html?__gh_mdp_raw=10".parse().unwrap()));
+        assert!(!is_raw_html_request(&"/preview.html?raw=1".parse().unwrap()));
+    }
+
+    #[test]
+    fn raw_html_url_preserves_the_page_query() {
+        assert_eq!(
+            raw_html_url("/preview.html", &"/preview.html?theme=dark".parse().unwrap()),
+            "/preview.html?theme=dark&__gh_mdp_raw=1"
+        );
+        assert_eq!(
+            raw_html_url("/preview.html", &"/preview.html".parse().unwrap()),
+            "/preview.html?__gh_mdp_raw=1"
+        );
     }
 }

@@ -7,6 +7,7 @@ A GitHub Flavored Markdown live preview server that:
 - Offers GitHub-style rendering with syntax highlighting and Mermaid diagrams
 - Serves relative links (images, files) from the markdown's directory
 - Renders linked markdown files with the same template
+- Displays linked HTML and XHTML files with a generated table of contents
 - Falls back to a browsable directory listing when there is no `index.md` or `README.md`
 - Links each directory in the header path to its listing, for files nothing links to
 - Renders a directory's `index.md` or `README.md` below its file listing

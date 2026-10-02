@@ -39,6 +39,8 @@
     .layout { display: flex; width: 100%; max-width: 1400px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
     .main-content { flex: 1; min-width: 0; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
+    .markdown-body.html-preview-container { padding: 0; overflow: hidden; }
+    #html-preview { display: block; width: 100%; height: calc(100vh - 152px); min-height: 500px; border: 0; background: #fff; }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .file-list a { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .anchor { scroll-margin-top: 70px; }
@@ -278,6 +280,11 @@
     const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
     const filePath = $('#file-path').dataset.path;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const htmlPreview = $('#html-preview');
+    if (htmlPreview) {
+      htmlPreview.parentElement.classList.add('html-preview-container');
+      $('#save-html-btn').hidden = true;
+    }
 
     // Edit mode state
     let currentMode = 'preview';
@@ -309,6 +316,11 @@
       const data = JSON.parse(msg);
       if (data.type !== 'update') return;
       if (data.path !== filePath) return;
+
+      if (htmlPreview) {
+        htmlPreview.contentWindow.location.reload();
+        return;
+      }
 
       // In edit mode, skip updates within 2s of local edit (infinite loop prevention)
       if (currentMode === 'edit' && Date.now() - lastLocalEdit < 2000) return;
@@ -586,27 +598,62 @@
     });
 
     // TOC generation
+    const tocContext = () => {
+      if (!htmlPreview) return { doc: document, view: window };
+      try {
+        const doc = htmlPreview.contentDocument;
+        const view = htmlPreview.contentWindow;
+        return doc && view ? { doc, view } : null;
+      } catch {
+        return null;
+      }
+    };
+    const boundHtmlDocuments = new WeakSet();
+    const bindHtmlPreviewLinks = context => {
+      if (!htmlPreview || boundHtmlDocuments.has(context.doc)) return;
+      boundHtmlDocuments.add(context.doc);
+      context.doc.addEventListener('click', e => {
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const link = e.target.closest('a[href]');
+        if (!link || link.target || link.hasAttribute('download')) return;
+        const url = new URL(link.href, context.doc.baseURI);
+        if (url.origin !== location.origin) return;
+        if (url.pathname === context.view.location.pathname && url.hash) return;
+        e.preventDefault();
+        url.searchParams.delete('__gh_mdp_raw');
+        window.location.assign(url);
+      });
+    };
     var buildToc = () => {
       const tocList = $('#toc-list');
-      const headings = $$('#content h1, #content h2, #content h3, #content h4, #content h5, #content h6');
+      const context = tocContext();
+      const selector = htmlPreview
+        ? 'h1, h2, h3, h4, h5, h6'
+        : '#content h1, #content h2, #content h3, #content h4, #content h5, #content h6';
+      const headings = context ? context.doc.querySelectorAll(selector) : [];
       tocList.innerHTML = '';
-      headings.forEach(h => {
-        const anchor = h.querySelector('.anchor');
+      headings.forEach((h, index) => {
+        const anchor = htmlPreview ? h : h.querySelector('.anchor');
         if (!anchor) return;
+        if (!anchor.id) {
+          let id = `gh-mdp-heading-${index + 1}`;
+          while (context.doc.getElementById(id)) id += '-1';
+          anchor.id = id;
+        }
         const id = anchor.id;
         const level = parseInt(h.tagName[1]);
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = `#${id}`;
+        a.href = `#${encodeURIComponent(id)}`;
         a.textContent = h.textContent;
         a.dataset.level = level;
         a.dataset.id = id;
         a.onclick = e => {
           e.preventDefault();
-          const target = document.getElementById(id);
+          const target = context.doc.getElementById(id);
           if (target) {
             target.scrollIntoView({ behavior: 'smooth' });
-            history.pushState(null, '', `#${id}`);
+            context.view.history.pushState(null, '', `#${encodeURIComponent(id)}`);
           }
           setTocOpen(false);
         };
@@ -614,6 +661,10 @@
         tocList.appendChild(li);
       });
       $('#toc-btn').hidden = !tocList.children.length;
+      if (context) {
+        bindHtmlPreviewLinks(context);
+        bindTocScroll(context.view);
+      }
       updateActiveToc();
     };
 
@@ -635,14 +686,15 @@
     let tocLinks = [];
     let headingPositions = [];
     const updateActiveToc = () => {
+      const context = tocContext();
       tocLinks = [...$$('.toc-list a')];
       headingPositions = tocLinks.map(a => {
-        const el = document.getElementById(a.dataset.id);
-        return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
+        const el = context?.doc.getElementById(a.dataset.id);
+        return el ? el.getBoundingClientRect().top + context.view.scrollY : Infinity;
       });
     };
     const highlightActiveToc = () => {
-      const scrollPos = window.scrollY + 100;
+      const scrollPos = (tocContext()?.view.scrollY || 0) + 100;
       let activeIdx = 0;
       for (let i = headingPositions.length - 1; i >= 0; i--) {
         if (scrollPos >= headingPositions[i]) { activeIdx = i; break; }
@@ -650,13 +702,22 @@
       tocLinks.forEach((a, i) => a.classList.toggle('active', i === activeIdx));
     };
     let scrollTicking = false;
-    window.addEventListener('scroll', () => {
+    const handleTocScroll = () => {
       if (!scrollTicking) {
         requestAnimationFrame(() => { highlightActiveToc(); scrollTicking = false; });
         scrollTicking = true;
       }
-    });
+    };
+    let tocScrollView = window;
+    const bindTocScroll = view => {
+      if (view === tocScrollView) return;
+      tocScrollView.removeEventListener('scroll', handleTocScroll);
+      tocScrollView = view;
+      tocScrollView.addEventListener('scroll', handleTocScroll);
+    };
+    window.addEventListener('scroll', handleTocScroll);
     window.addEventListener('resize', () => requestAnimationFrame(updateActiveToc));
+    if (htmlPreview) htmlPreview.addEventListener('load', buildToc);
 
     // Task list checkbox toggling
     var bindTaskCheckboxes = () => {
