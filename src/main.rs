@@ -27,8 +27,8 @@ const LICENSES: &str = concat!(
 #[derive(Parser)]
 #[command(about, version)]
 pub struct Args {
-    /// Markdown file or directory to preview (defaults to ./index.md, ./README.md, or a
-    /// listing of the current directory)
+    /// Markdown or HTML file, or directory to preview (defaults to ./index.md, ./README.md,
+    /// or a listing of the current directory)
     pub file: Option<PathBuf>,
     /// Bind address
     #[arg(short, long, default_value = "127.0.0.1")]
