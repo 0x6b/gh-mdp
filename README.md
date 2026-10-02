@@ -7,6 +7,7 @@ A GitHub Flavored Markdown live preview server that:
 - Offers GitHub-style rendering with syntax highlighting and Mermaid diagrams
 - Serves relative links (images, files) from the markdown's directory
 - Renders linked markdown files with the same template
+- Displays linked HTML and XHTML files with a generated table of contents
 - Falls back to a browsable directory listing when there is no `index.md` or `README.md`
 - Links each directory in the header path to its listing, for files nothing links to
 - Renders a directory's `index.md` or `README.md` below its file listing
@@ -29,6 +30,7 @@ You can use the binary `gh-mdp` standalone.
 ```console
 $ cargo install --git https://github.com/0x6b/gh-mdp
 $ gh-mdp README.md
+$ gh-mdp report.html
 ```
 
 You can also install this as a [GitHub CLI](https://cli.github.com/) (`gh`) extension.
@@ -59,7 +61,7 @@ A GitHub Flavored Markdown live preview server
 Usage: gh-mdp [OPTIONS] [FILE]
 
 Arguments:
-  [FILE]  Markdown file or directory to preview (defaults to ./index.md, ./README.md, or a listing of the current directory)
+  [FILE]  Markdown or HTML file, or directory to preview (defaults to ./index.md, ./README.md, or a listing of the current directory)
 
 Options:
   -b, --bind <BIND>  Bind address [default: 127.0.0.1]
@@ -70,6 +72,8 @@ Options:
 ```
 
 When a directory is specified, it looks for `index.md` first, then `README.md`. If the directory has neither, a browsable file listing is shown instead. Listings skip dotfiles and gitignored entries, and update live as files come and go. Any directory browsed into shows the same listing, with its own `index.md` or `README.md` rendered below the file list. Listings are read-only, so the edit toggle is hidden; edit such a file on its own page.
+
+Passing an `.html`, `.htm`, `.xhtml`, or `.xht` file displays the document edge to edge with its own styles and scripts intact. Use the floating button in the upper-right corner to open a table of contents generated from the document's `h1` through `h6` headings or return to the parent directory listing.
 
 Every file is served at its own path below the directory it lives in, so previewing `README.md` opens `/README.md`. The root path `/` lists that directory, and every directory in the header path links to its own listing, so files that nothing links to are still a couple of clicks away.
 

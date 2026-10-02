@@ -39,6 +39,8 @@
     .layout { display: flex; width: 100%; max-width: 1400px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
     .main-content { flex: 1; min-width: 0; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
+    .markdown-body.html-preview-container { padding: 0; overflow: hidden; }
+    #html-preview { display: block; width: 100%; height: 100vh; border: 0; background: #fff; }
     .markdown-body pre code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .file-list a { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
     .markdown-body .anchor { scroll-margin-top: 70px; }
@@ -60,6 +62,10 @@
     .toc { position: sticky; top: 80px; max-height: calc(100vh - 100px); overflow-y: auto; }
     .toc-title { color: var(--text-muted); margin-bottom: 12px; }
     .toc-title svg { width: 16px; height: 16px; }
+    .toc-parent { display: flex; align-items: center; justify-content: center; width: 100%; height: 30px; margin-bottom: 12px; color: var(--text); text-decoration: none; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+    .toc-parent:hover { color: var(--accent); border-color: var(--accent); }
+    .toc-parent svg { width: 14px; height: 14px; }
+    .toc-parent[hidden] { display: none; }
     .toc-list { list-style: none; margin: 0; padding: 0; }
     .toc-list li { margin: 0; }
     .toc-list a { display: block; padding: 4px 0; font-size: 13px; color: var(--text-muted); text-decoration: none; border-left: 2px solid transparent; transition: color 0.15s, border-color 0.15s; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -78,6 +84,18 @@
       .toc { position: static; max-height: none; overflow: visible; }
       .layout { padding: 32px 16px; }
     }
+    body.html-preview-page { overflow: hidden; }
+    body.html-preview-page .header { position: fixed; top: 16px; right: 16px; z-index: 101; padding: 0; border: 0; background: none; }
+    body.html-preview-page .header > :not(.toc-btn) { display: none; }
+    body.html-preview-page .header .toc-btn { display: flex; padding: 8px; color: var(--text); background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+    body.html-preview-page .header .toc-btn[hidden] { display: none; }
+    body.html-preview-page .layout { display: block; max-width: none; height: 100vh; padding: 0; }
+    body.html-preview-page .main-content, body.html-preview-page .markdown-body { width: 100%; height: 100%; }
+    body.html-preview-page .markdown-body { min-height: 0; border: 0; border-radius: 0; }
+    body.html-preview-page .toc-sidebar { display: none; position: fixed; top: 64px; right: 16px; bottom: auto; z-index: 100; width: 280px; max-width: calc(100vw - 32px); max-height: calc(100vh - 80px); padding: 16px; overflow-y: auto; background: var(--card); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); }
+    body.html-preview-page.toc-open .toc-sidebar { display: block; }
+    body.html-preview-page .toc { position: static; max-height: none; overflow: visible; }
+    body.html-preview-page .toc-title { display: none; }
 
     /* Mermaid diagram container */
     .mermaid-container {
@@ -259,6 +277,7 @@
     </main>
     <aside class="toc-sidebar">
       <nav class="toc">
+        <a class="toc-parent" id="toc-parent" href="/" title="Parent directory" aria-label="Parent directory" hidden><svg viewBox="0 0 16 16" fill="currentColor"><path d="M3.22 6.97a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0l4.25 4.25a.749.749 0 1 1-1.06 1.06L8.75 4v9.25a.75.75 0 0 1-1.5 0V4L4.28 6.97a.75.75 0 0 1-1.06 0Z"/></svg></a>
         <div class="toc-title"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg></div>
         <ul class="toc-list" id="toc-list"></ul>
       </nav>
@@ -278,6 +297,17 @@
     const $ = s => document.querySelector(s), $$ = s => document.querySelectorAll(s);
     const filePath = $('#file-path').dataset.path;
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const htmlPreview = $('#html-preview');
+    if (htmlPreview) {
+      document.body.classList.add('html-preview-page');
+      htmlPreview.parentElement.classList.add('html-preview-container');
+      $('#save-html-btn').hidden = true;
+      const parentUrl = new URL('.', location.href);
+      parentUrl.search = '';
+      parentUrl.hash = '';
+      $('#toc-parent').href = parentUrl.href;
+      $('#toc-parent').hidden = false;
+    }
 
     // Edit mode state
     let currentMode = 'preview';
@@ -309,6 +339,11 @@
       const data = JSON.parse(msg);
       if (data.type !== 'update') return;
       if (data.path !== filePath) return;
+
+      if (htmlPreview) {
+        htmlPreview.contentWindow.location.reload();
+        return;
+      }
 
       // In edit mode, skip updates within 2s of local edit (infinite loop prevention)
       if (currentMode === 'edit' && Date.now() - lastLocalEdit < 2000) return;
@@ -586,34 +621,77 @@
     });
 
     // TOC generation
+    const tocContext = () => {
+      if (!htmlPreview) return { doc: document, view: window };
+      try {
+        const doc = htmlPreview.contentDocument;
+        const view = htmlPreview.contentWindow;
+        return doc && view ? { doc, view } : null;
+      } catch {
+        return null;
+      }
+    };
+    const boundHtmlDocuments = new WeakSet();
+    const bindHtmlPreviewLinks = context => {
+      if (!htmlPreview || boundHtmlDocuments.has(context.doc)) return;
+      boundHtmlDocuments.add(context.doc);
+      context.doc.addEventListener('click', e => {
+        setTocOpen(false);
+        if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        const link = e.target.closest('a[href]');
+        if (!link || link.target || link.hasAttribute('download')) return;
+        const url = new URL(link.href, context.doc.baseURI);
+        if (url.origin !== location.origin) return;
+        if (url.pathname === context.view.location.pathname && url.hash) return;
+        e.preventDefault();
+        url.searchParams.delete('__gh_mdp_raw');
+        window.location.assign(url);
+      });
+      context.doc.addEventListener('keydown', e => {
+        if (e.key === 'Escape') setTocOpen(false);
+      });
+    };
     var buildToc = () => {
       const tocList = $('#toc-list');
-      const headings = $$('#content h1, #content h2, #content h3, #content h4, #content h5, #content h6');
+      const context = tocContext();
+      const selector = htmlPreview
+        ? 'h1, h2, h3, h4, h5, h6'
+        : '#content h1, #content h2, #content h3, #content h4, #content h5, #content h6';
+      const headings = context ? context.doc.querySelectorAll(selector) : [];
       tocList.innerHTML = '';
-      headings.forEach(h => {
-        const anchor = h.querySelector('.anchor');
+      headings.forEach((h, index) => {
+        const anchor = htmlPreview ? h : h.querySelector('.anchor');
         if (!anchor) return;
+        if (!anchor.id) {
+          let id = `gh-mdp-heading-${index + 1}`;
+          while (context.doc.getElementById(id)) id += '-1';
+          anchor.id = id;
+        }
         const id = anchor.id;
         const level = parseInt(h.tagName[1]);
         const li = document.createElement('li');
         const a = document.createElement('a');
-        a.href = `#${id}`;
+        a.href = `#${encodeURIComponent(id)}`;
         a.textContent = h.textContent;
         a.dataset.level = level;
         a.dataset.id = id;
         a.onclick = e => {
           e.preventDefault();
-          const target = document.getElementById(id);
+          const target = context.doc.getElementById(id);
           if (target) {
             target.scrollIntoView({ behavior: 'smooth' });
-            history.pushState(null, '', `#${id}`);
+            context.view.history.pushState(null, '', `#${encodeURIComponent(id)}`);
           }
           setTocOpen(false);
         };
         li.appendChild(a);
         tocList.appendChild(li);
       });
-      $('#toc-btn').hidden = !tocList.children.length;
+      $('#toc-btn').hidden = !htmlPreview && !tocList.children.length;
+      if (context) {
+        bindHtmlPreviewLinks(context);
+        bindTocScroll(context.view);
+      }
       updateActiveToc();
     };
 
@@ -621,7 +699,7 @@
     const setTocOpen = open => {
       document.body.classList.toggle('toc-open', open);
       $('#toc-btn').classList.toggle('active', open);
-      if (open) $('.toc-sidebar').style.top = `${$('.header').offsetHeight}px`;
+      if (open && !htmlPreview) $('.toc-sidebar').style.top = `${$('.header').offsetHeight}px`;
     };
     $('#toc-btn').onclick = () => setTocOpen(!document.body.classList.contains('toc-open'));
     document.addEventListener('click', e => {
@@ -635,14 +713,15 @@
     let tocLinks = [];
     let headingPositions = [];
     const updateActiveToc = () => {
+      const context = tocContext();
       tocLinks = [...$$('.toc-list a')];
       headingPositions = tocLinks.map(a => {
-        const el = document.getElementById(a.dataset.id);
-        return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
+        const el = context?.doc.getElementById(a.dataset.id);
+        return el ? el.getBoundingClientRect().top + context.view.scrollY : Infinity;
       });
     };
     const highlightActiveToc = () => {
-      const scrollPos = window.scrollY + 100;
+      const scrollPos = (tocContext()?.view.scrollY || 0) + 100;
       let activeIdx = 0;
       for (let i = headingPositions.length - 1; i >= 0; i--) {
         if (scrollPos >= headingPositions[i]) { activeIdx = i; break; }
@@ -650,13 +729,22 @@
       tocLinks.forEach((a, i) => a.classList.toggle('active', i === activeIdx));
     };
     let scrollTicking = false;
-    window.addEventListener('scroll', () => {
+    const handleTocScroll = () => {
       if (!scrollTicking) {
         requestAnimationFrame(() => { highlightActiveToc(); scrollTicking = false; });
         scrollTicking = true;
       }
-    });
+    };
+    let tocScrollView = window;
+    const bindTocScroll = view => {
+      if (view === tocScrollView) return;
+      tocScrollView.removeEventListener('scroll', handleTocScroll);
+      tocScrollView = view;
+      tocScrollView.addEventListener('scroll', handleTocScroll);
+    };
+    window.addEventListener('scroll', handleTocScroll);
     window.addEventListener('resize', () => requestAnimationFrame(updateActiveToc));
+    if (htmlPreview) htmlPreview.addEventListener('load', buildToc);
 
     // Task list checkbox toggling
     var bindTaskCheckboxes = () => {
