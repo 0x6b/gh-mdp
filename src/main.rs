@@ -125,8 +125,7 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
                     let Some(path) = resolve_app_path(&base_dir, url.path()) else {
                         return true;
                     };
-                    if path.is_file() && path.extension().is_none_or(|extension| extension != "md")
-                    {
+                    if path.is_file() && !is_app_preview_file(&path) {
                         let _ = open::that(path);
                         return false;
                     }
@@ -152,6 +151,17 @@ fn resolve_app_path(base_dir: &Path, url_path: &str) -> Option<PathBuf> {
     resolved.starts_with(base_dir).then_some(resolved)
 }
 
+#[cfg(any(windows, test))]
+fn is_app_preview_file(path: &Path) -> bool {
+    path.extension().is_some_and(|extension| {
+        extension.eq_ignore_ascii_case("md")
+            || extension.eq_ignore_ascii_case("html")
+            || extension.eq_ignore_ascii_case("htm")
+            || extension.eq_ignore_ascii_case("xhtml")
+            || extension.eq_ignore_ascii_case("xht")
+    })
+}
+
 /// Find the markdown file to preview inside `dir`. Returns `None` when the directory
 /// has neither, in which case the directory itself is previewed as a file listing.
 fn resolve_markdown(dir: &Path, context: &str) -> Option<PathBuf> {
@@ -175,5 +185,17 @@ mod tests {
 
         assert_eq!(resolve_app_path(&base, "/README%2Emd"), Some(readme));
         assert_eq!(resolve_app_path(&base, "/%2E%2E"), None);
+    }
+
+    #[test]
+    fn app_previews_markdown_and_html_files() {
+        assert!(is_app_preview_file(Path::new("README.md")));
+        assert!(is_app_preview_file(Path::new("preview.html")));
+        assert!(is_app_preview_file(Path::new("preview.HTM")));
+        assert!(is_app_preview_file(Path::new("preview.xhtml")));
+        assert!(is_app_preview_file(Path::new("preview.XHT")));
+        assert!(!is_app_preview_file(Path::new("preview.xhtm")));
+        assert!(!is_app_preview_file(Path::new("document.pdf")));
+        assert!(!is_app_preview_file(Path::new("Makefile")));
     }
 }
