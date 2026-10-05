@@ -1,4 +1,5 @@
 use std::{
+    path::Path,
     sync::{Arc, mpsc::channel},
     thread::{park, spawn},
     time::Duration,
@@ -8,7 +9,7 @@ use notify_debouncer_mini::{new_debouncer, notify::RecursiveMode};
 use tokio::sync::mpsc::unbounded_channel;
 use tracing::info;
 
-use super::{state::AppState, util::build_gitignore};
+use super::{files::is_html_file, state::AppState, util::build_gitignore};
 
 const DEBOUNCE: Duration = Duration::from_millis(100);
 
@@ -18,7 +19,7 @@ pub async fn watch(state: Arc<AppState>) {
 
     let gitignore = build_gitignore(&base_dir);
 
-    info!("Watching for markdown changes in {}", base_dir.display());
+    info!("Watching for markdown and HTML changes in {}", base_dir.display());
 
     spawn({
         let base_dir = base_dir.clone();
@@ -37,11 +38,10 @@ pub async fn watch(state: Arc<AppState>) {
     spawn(move || {
         while let Ok(Ok(events)) = rx.recv() {
             for e in events {
-                let is_md = e.path.extension().is_some_and(|ext| ext == "md");
                 let is_ignored = gitignore.matched_path_or_any_parents(&e.path, false).is_ignore();
-                // Non-markdown events matter too when the root page is a directory
+                // Other file events matter too when the root page is a directory
                 // listing: adding or removing any file changes what it should show.
-                if (is_md || listing) && !is_ignored {
+                if (is_preview_file(&e.path) || listing) && !is_ignored {
                     let _ = notify_tx.send(e.path);
                 }
             }
@@ -49,18 +49,44 @@ pub async fn watch(state: Arc<AppState>) {
     });
 
     while let Some(path) = notify_rx.recv().await {
-        if path.extension().is_some_and(|ext| ext == "md") {
+        if is_preview_file(&path) {
             if state.refresh(&path).await {
                 info!("File changed: {}", path.display());
             }
             // The listing of the directory holding this file renders it below
             // the file list, so that page needs the same refresh.
-            if let Some(parent) = path.parent() {
+            if is_markdown_file(&path)
+                && let Some(parent) = path.parent()
+            {
                 state.refresh(parent).await;
             }
         }
         if state.listing && state.refresh(&base_dir).await {
             info!("Directory changed: {}", base_dir.display());
         }
+    }
+}
+
+fn is_preview_file(path: &Path) -> bool {
+    is_markdown_file(path) || is_html_file(path)
+}
+
+fn is_markdown_file(path: &Path) -> bool {
+    path.extension().is_some_and(|ext| ext == "md")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn watches_markdown_and_supported_html_files() {
+        assert!(is_preview_file(Path::new("README.md")));
+        assert!(is_preview_file(Path::new("preview.html")));
+        assert!(is_preview_file(Path::new("preview.HTM")));
+        assert!(is_preview_file(Path::new("preview.xhtml")));
+        assert!(is_preview_file(Path::new("preview.XHT")));
+        assert!(!is_preview_file(Path::new("preview.xhtm")));
+        assert!(!is_preview_file(Path::new("styles.css")));
     }
 }
