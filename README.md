@@ -18,10 +18,12 @@ A GitHub Flavored Markdown live preview server that:
 
 ## Keyboard Shortcuts
 
-| Key                         | Action                 |
-| --------------------------- | ---------------------- |
-| `e`                         | Enter edit mode        |
-| `Escape` / `Cmd/Ctrl+Enter` | Return to preview mode |
+| Key                                                               | Action                 |
+| ----------------------------------------------------------------- | ---------------------- |
+| <kbd>E</kbd>                                                       | Enter edit mode        |
+| <kbd>Escape</kbd> / <kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> | Return to preview mode |
+| <kbd>Ctrl</kbd>+<kbd>-</kbd> / <kbd>Ctrl</kbd>+<kbd>+</kbd>        | Zoom out/in (app only) |
+| <kbd>Ctrl</kbd>+<kbd>0</kbd>                                      | Reset zoom (app only)  |
 
 ## Installation
 
