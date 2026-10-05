@@ -2,7 +2,7 @@
 
 A GitHub Flavored Markdown live preview server that:
 
-- Watches all markdown files in the directory tree (respects `.gitignore`)
+- Watches all Markdown, HTML, and XHTML files in the directory tree (respects `.gitignore`)
 - Reloads changes automatically with DOM diffing (preserves scroll position)
 - Offers GitHub-style rendering with syntax highlighting and Mermaid diagrams
 - Serves relative links (images, files) from the markdown's directory

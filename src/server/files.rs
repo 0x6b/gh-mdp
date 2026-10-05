@@ -86,7 +86,7 @@ fn directory_redirect(uri: &Uri) -> Option<String> {
     Some(location)
 }
 
-fn is_html_file(path: &FsPath) -> bool {
+pub(super) fn is_html_file(path: &FsPath) -> bool {
     path.extension().is_some_and(|extension| {
         extension.eq_ignore_ascii_case("html")
             || extension.eq_ignore_ascii_case("htm")
