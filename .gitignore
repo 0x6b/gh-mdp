@@ -2,5 +2,6 @@
 /gen
 /assets/*.css
 /assets/*.js
+!/assets/app-shortcuts.js
 /assets/LICENSE*
 gh-mdp

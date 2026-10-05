@@ -6,6 +6,9 @@ use gh_mdp::{Server, default_markdown};
 use tracing::info;
 use tracing_subscriber::{EnvFilter, fmt::layer, prelude::*, registry};
 
+#[cfg(windows)]
+const APP_SHORTCUTS: &str = include_str!("../assets/app-shortcuts.js");
+
 const LICENSES: &str = concat!(
     "gh-mdp\n======\n",
     include_str!("../LICENSE"),
@@ -116,6 +119,7 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
                 .title(title)
                 .inner_size(1200.0, 800.0)
+                .initialization_script_for_all_frames(APP_SHORTCUTS)
                 .on_navigation(move |url| {
                     if url.origin().ascii_serialization() != server_origin {
                         let _ = open::that(url.as_str());
