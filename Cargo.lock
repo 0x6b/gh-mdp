@@ -1343,7 +1343,7 @@ dependencies = [
 
 [[package]]
 name = "gh-mdp"
-version = "1.5.1"
+version = "1.5.2"
 dependencies = [
  "anyhow",
  "axum",
