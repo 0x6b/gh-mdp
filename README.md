@@ -52,7 +52,7 @@ The Windows binary can open a preview in its own app window while the regular `g
 gh-mdp.exe --app README.md
 ```
 
-To make `gh-mdp` available for `.md` files, place [`scripts/register-file-association.cmd`](scripts/register-file-association.cmd) and [`scripts/unregister-file-association.cmd`](scripts/unregister-file-association.cmd) next to `gh-mdp.exe`. Run the registration script, then select `gh-mdp` once from Windows' **Open with** or **Default apps** UI. Registration is per-user and does not require administrator privileges.
+To make `gh-mdp` available for Markdown and HTML files (`.md`, `.html`, `.htm`, `.xhtml`, and `.xht`), place [`scripts/register-file-association.cmd`](scripts/register-file-association.cmd), [`scripts/unregister-file-association.cmd`](scripts/unregister-file-association.cmd), and [`icons/file-code.ico`](icons/file-code.ico) next to `gh-mdp.exe`. Run the registration script, then select `gh-mdp` once from Windows' **Open with** or **Default apps** UI. Registration is per-user and does not require administrator privileges.
 
 ## Usage
 
@@ -85,7 +85,7 @@ MIT. See [LICENSE](./LICENSE) for details.
 
 ### Third-party assets
 
-The third-party assets and their licenses are downloaded at build time and embedded into the final product. Run `gh mdp --licenses` to print the license notices.
+Third-party web assets and license notices are downloaded at build time and embedded into the binary. App and file icons are kept in the repository. Run `gh mdp --licenses` to print the license notices.
 
 | Asset                                                                      | License      | Source                                                                           |
 | -------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------- |
@@ -95,6 +95,4 @@ The third-party assets and their licenses are downloaded at build time and embed
 | [morphdom](https://github.com/patrick-steele-idem/morphdom)                | MIT          | [LICENSE](https://github.com/patrick-steele-idem/morphdom/blob/master/LICENSE)   |
 | [OverType](https://overtype.dev/)                                          | MIT          | [LICENSE](https://github.com/panphora/overtype/blob/main/LICENSE)                |
 
-The favicon and header icon use the [Markdown mark](https://commons.wikimedia.org/wiki/File:Markdown-mark.svg) from Wikimedia Commons (CC0/Public Domain).
-
-UI icons (copy, list, screen-full) and GitHub-style alert icons (note, tip, important, warning, caution) are from [Octicons](https://primer.style/foundations/icons) (MIT).
+The app, favicon, header, and Windows file-association icons (`markdown`, `file-code`), UI icons (`copy`, `list`, `screen-full`), and GitHub-style alert icons (`note`, `tip`, `important`, `warning`, `caution`) are from [Primer Octicons](https://primer.style/octicons/) (MIT).
