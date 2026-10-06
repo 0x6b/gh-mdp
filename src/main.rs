@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
 
 #[cfg(windows)]
 async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
-    use tauri::{WebviewUrl, WebviewWindowBuilder, WindowEvent};
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
     use windows_sys::Win32::System::Console::FreeConsole;
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
 
@@ -116,6 +116,7 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
             }
         })
         .setup(move |app| {
+            let app_handle = app.handle().clone();
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
                 .title(title)
                 .inner_size(1200.0, 800.0)
@@ -132,6 +133,10 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
                     if path.is_file() && !is_app_preview_file(&path) {
                         let _ = open::that(path);
                         return false;
+                    }
+
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.set_title(&gh_mdp::page_title(&path));
                     }
 
                     true
