@@ -11,6 +11,7 @@ pub fn render_page(file_path: &Path, base_dir: &Path, content: &str, read_only: 
     TEMPLATE
         .replace("{{page_title}}", &escape_html(&page_title(file_path)))
         .replace("{{file_path}}", &escape_html(&file_path.display().to_string()))
+        .replace("{{copy_path}}", &escape_html(&display_path(file_path)))
         .replace("{{breadcrumb}}", &breadcrumb(file_path, base_dir))
         .replace("{{mode_btn_attrs}}", if read_only { " hidden" } else { "" })
         .replace("{{content}}", content)
@@ -77,6 +78,19 @@ mod tests {
             crumb("/w", "/w/a&b/c d.md"),
             r#"<a href="/">/w</a><span class="header-sep">/</span><a href="/a%26b/">a&amp;b</a><span class="header-sep">/</span>c d.md"#
         );
+    }
+
+    #[test]
+    fn copy_paths_are_readable_without_changing_internal_paths() {
+        for (path, copied) in [
+            (r"\\?\C:\Users\佐藤\a&b.md", r"C:\Users\佐藤\a&amp;b.md"),
+            (r"\\?\UNC\server\share\preview.html", r"\\server\share\preview.html"),
+            ("/w/a&b.html", "/w/a&amp;b.html"),
+        ] {
+            let html = render_page(Path::new(path), Path::new("/w"), "", false);
+            assert!(html.contains(&format!(r#"data-path="{}""#, escape_html(path))));
+            assert!(html.contains(&format!(r#"data-copy-path="{copied}""#)));
+        }
     }
 
     #[test]
