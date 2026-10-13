@@ -88,7 +88,8 @@
     body.html-preview-page { overflow: hidden; }
     body.html-preview-page .header { position: fixed; top: 16px; right: 16px; z-index: 101; padding: 0; border: 0; background: none; }
     body.html-preview-page .header > :not(.toc-btn) { display: none; }
-    body.html-preview-page .header .toc-btn { display: flex; padding: 8px; color: var(--text); background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); }
+    body.html-preview-page .header .toc-btn { display: flex; padding: 8px; color: var(--text); background: var(--card); border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); opacity: 0.6; transition: opacity 0.15s; }
+    body.html-preview-page .header .toc-btn:hover, body.html-preview-page .header .toc-btn:focus-visible { opacity: 1; }
     body.html-preview-page .header .toc-btn[hidden] { display: none; }
     body.html-preview-page .layout { display: block; max-width: none; height: 100vh; padding: 0; }
     body.html-preview-page .main-content, body.html-preview-page .markdown-body { width: 100%; height: 100%; }
