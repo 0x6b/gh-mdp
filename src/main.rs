@@ -86,12 +86,18 @@ async fn main() -> Result<()> {
 
 #[cfg(windows)]
 async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
-    use tauri::{
-        Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
-        menu::{Menu, MenuItem},
+    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+    use webview2_com::{
+        AcceleratorKeyPressedEventHandler,
+        Microsoft::Web::WebView2::Win32::{
+            COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN, COREWEBVIEW2_PHYSICAL_KEY_STATUS,
+        },
     };
     use windows_sys::Win32::System::Console::FreeConsole;
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
+        GetKeyState, VK_CONTROL, VK_MENU, VK_SHIFT,
+    };
 
     // This binary keeps the console subsystem for `gh mdp`. Explorer creates a
     // console when a file association starts it, so detach only in app mode.
@@ -120,18 +126,10 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
         })
         .setup(move |app| {
             let app_handle = app.handle().clone();
-            let close = MenuItem::with_id(app, "close-window", "Close", true, Some("Ctrl+W"))?;
-            let menu = Menu::with_items(app, &[&close])?;
             let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
                 .title(title)
                 .inner_size(1200.0, 800.0)
                 .visible(false)
-                .menu(menu)
-                .on_menu_event(|window, event| {
-                    if event.id().as_ref() == "close-window" {
-                        let _ = window.close();
-                    }
-                })
                 .initialization_script_for_all_frames(APP_SHORTCUTS)
                 .on_navigation(move |url| {
                     if url.origin().ascii_serialization() != server_origin {
@@ -154,8 +152,44 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
                     true
                 })
                 .build()?;
-            // Keep the native accelerator active without showing a menu bar.
-            window.hide_menu()?;
+            let close_window = window.clone();
+            window.with_webview(move |webview| unsafe {
+                // WebView2 handles focused keyboard input outside the native menu path.
+                let handler =
+                    AcceleratorKeyPressedEventHandler::create(Box::new(move |_, args| {
+                        let Some(args) = args else { return Ok(()) };
+                        let mut kind = COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN;
+                        let mut key = 0;
+                        args.KeyEventKind(&mut kind)?;
+                        args.VirtualKey(&mut key)?;
+                        if kind == COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN
+                            && key == u32::from(b'W')
+                            && GetKeyState(VK_CONTROL as i32) < 0
+                            && GetKeyState(VK_MENU as i32) >= 0
+                            && GetKeyState(VK_SHIFT as i32) >= 0
+                        {
+                            args.SetHandled(true)?;
+                            let mut status = COREWEBVIEW2_PHYSICAL_KEY_STATUS::default();
+                            args.PhysicalKeyStatus(&mut status)?;
+                            if !status.WasKeyDown.as_bool() {
+                                let window = close_window.clone();
+                                // Defer closing until outside WebView2's synchronous callback.
+                                std::thread::spawn(move || {
+                                    if let Err(error) = window.close() {
+                                        tracing::error!(%error, "Ctrl+W close failed");
+                                    }
+                                });
+                            }
+                        }
+                        Ok(())
+                    }));
+                let mut token = 0;
+                if let Err(error) =
+                    webview.controller().add_AcceleratorKeyPressed(&handler, &mut token)
+                {
+                    tracing::error!(%error, "Failed to register Ctrl+W handler");
+                }
+            })?;
             window.show()?;
             Ok(())
         })

@@ -1366,6 +1366,7 @@ dependencies = [
  "tower-http 0.7.0",
  "tracing",
  "tracing-subscriber",
+ "webview2-com",
  "windows-sys 0.61.2",
 ]
 
