@@ -86,7 +86,10 @@ async fn main() -> Result<()> {
 
 #[cfg(windows)]
 async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
-    use tauri::{Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent};
+    use tauri::{
+        Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
+        menu::{Menu, MenuItem},
+    };
     use windows_sys::Win32::System::Console::FreeConsole;
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, TerminateProcess};
 
@@ -117,9 +120,18 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
         })
         .setup(move |app| {
             let app_handle = app.handle().clone();
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
+            let close = MenuItem::with_id(app, "close-window", "Close", true, Some("Ctrl+W"))?;
+            let menu = Menu::with_items(app, &[&close])?;
+            let window = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(page_url))
                 .title(title)
                 .inner_size(1200.0, 800.0)
+                .visible(false)
+                .menu(menu)
+                .on_menu_event(|window, event| {
+                    if event.id().as_ref() == "close-window" {
+                        let _ = window.close();
+                    }
+                })
                 .initialization_script_for_all_frames(APP_SHORTCUTS)
                 .on_navigation(move |url| {
                     if url.origin().ascii_serialization() != server_origin {
@@ -142,6 +154,9 @@ async fn run_app(file: PathBuf, bind: &str) -> Result<()> {
                     true
                 })
                 .build()?;
+            // Keep the native accelerator active without showing a menu bar.
+            window.hide_menu()?;
+            window.show()?;
             Ok(())
         })
         .run(tauri::generate_context!())?;
