@@ -1,7 +1,9 @@
 use std::{collections::HashMap, time::Instant};
 
+use linkify::{LinkFinder, LinkKind};
 use pulldown_cmark::{
-    BlockQuoteKind, Event, MetadataBlockKind, Options, Parser, Tag, TagEnd, html::push_html,
+    BlockQuoteKind, CowStr, Event, LinkType, MetadataBlockKind, Options, Parser, Tag, TagEnd,
+    TextMergeStream, html::push_html,
 };
 use serde_yaml::{Value, from_str};
 use tracing::info;
@@ -46,6 +48,51 @@ fn slugify(text: &str) -> String {
         .filter(|s| !s.is_empty())
         .collect::<Vec<_>>()
         .join("-")
+}
+
+/// Turn bare URLs (`https://…`, `www.…`) and email addresses in `text` into
+/// links, like GitHub's autolink extension, which pulldown-cmark lacks.
+/// Returns `None` when `text` has nothing to link.
+fn autolink(text: &str) -> Option<Vec<Event<'static>>> {
+    let mut finder = LinkFinder::new();
+    finder.url_must_have_scheme(false);
+    let mut events = Vec::new();
+    let mut plain = String::new();
+    for span in finder.spans(text) {
+        let s = span.as_str();
+        let link = match span.kind() {
+            // The HTML writer adds `mailto:` for email links.
+            Some(LinkKind::Email) => Some((LinkType::Email, s.to_string())),
+            Some(LinkKind::Url) if s.contains("://") => Some((LinkType::Autolink, s.to_string())),
+            // Like GitHub, link `www.` domains but not other bare domains such as `main.rs`.
+            Some(LinkKind::Url) if s.to_ascii_lowercase().starts_with("www.") => {
+                Some((LinkType::Autolink, format!("http://{s}")))
+            }
+            _ => None,
+        };
+        let Some((link_type, dest_url)) = link else {
+            plain.push_str(s);
+            continue;
+        };
+        if !plain.is_empty() {
+            events.push(Event::Text(std::mem::take(&mut plain).into()));
+        }
+        events.push(Event::Start(Tag::Link {
+            link_type,
+            dest_url: dest_url.into(),
+            title: CowStr::Borrowed(""),
+            id: CowStr::Borrowed(""),
+        }));
+        events.push(Event::Text(s.to_string().into()));
+        events.push(Event::End(TagEnd::Link));
+    }
+    if events.is_empty() {
+        return None;
+    }
+    if !plain.is_empty() {
+        events.push(Event::Text(plain.into()));
+    }
+    Some(events)
 }
 
 fn yaml_value_to_html(value: &Value) -> String {
@@ -114,13 +161,15 @@ fn render_front_matter(yaml: &str) -> String {
 
 pub fn render(content: &str, file: &str, url: &str) -> String {
     let start = Instant::now();
-    let parser = Parser::new_ext(content, OPTIONS);
+    // Merge adjacent text events so a URL split by the parser is linked whole.
+    let parser = TextMergeStream::new(Parser::new_ext(content, OPTIONS));
 
     let mut slug_counts: HashMap<String, usize> = HashMap::new();
     let mut heading: Option<String> = None;
     let mut task_index: usize = 0;
     let mut in_metadata = false;
     let mut metadata_text = String::new();
+    let mut no_autolink_depth: usize = 0;
 
     let events: Vec<Event> = parser
         .flat_map(|event| match (&event, &mut heading) {
@@ -175,6 +224,23 @@ pub fn render(content: &str, file: &str, url: &str) -> String {
             }
             _ => vec![event],
         })
+        .flat_map(|event| {
+            match &event {
+                Event::Start(Tag::Link { .. } | Tag::Image { .. } | Tag::CodeBlock(_)) => {
+                    no_autolink_depth += 1;
+                }
+                Event::End(TagEnd::Link | TagEnd::Image | TagEnd::CodeBlock) => {
+                    no_autolink_depth -= 1;
+                }
+                Event::Text(t) if no_autolink_depth == 0 => {
+                    if let Some(events) = autolink(t) {
+                        return events;
+                    }
+                }
+                _ => {}
+            }
+            vec![event]
+        })
         .collect();
 
     let mut html = String::new();
@@ -184,4 +250,32 @@ pub fn render(content: &str, file: &str, url: &str) -> String {
     push_html(&mut html, events.into_iter());
     info!(file, url, latency = ?start.elapsed(), "Markdown rendered");
     html
+}
+
+#[cfg(test)]
+mod tests {
+    use super::render;
+
+    #[test]
+    fn autolinks_bare_urls_and_emails() {
+        let html = render(
+            "See https://example.com/a*b_c. Or https://example.com/a--b, www.example.org, me@example.com, and main.rs.\n\n\
+             `https://code.example` [https://text.example](https://dest.example)\n\n\
+             ```\nhttps://block.example\n```\n",
+            "test.md",
+            "/test.md",
+        );
+        for expected in [
+            r#"<a href="https://example.com/a*b_c">https://example.com/a*b_c</a>. Or"#,
+            r#"<a href="https://example.com/a--b">https://example.com/a--b</a>,"#,
+            r#"<a href="http://www.example.org">www.example.org</a>,"#,
+            r#"<a href="mailto:me@example.com">me@example.com</a>, and main.rs."#,
+            "<code>https://code.example</code>",
+            r#"<a href="https://dest.example">https://text.example</a>"#,
+            "<code>https://block.example\n</code>",
+        ] {
+            assert!(html.contains(expected), "missing {expected:?} in {html}");
+        }
+        assert_eq!(html.matches("<a ").count(), 5, "{html}");
+    }
 }

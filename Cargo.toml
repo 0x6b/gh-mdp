@@ -19,6 +19,7 @@ futures = "0.3.34"
 
 # Markdown rendering
 pulldown-cmark = { version = "0.13.4", features = ["simd"] }
+linkify = "0.11.0"
 
 # File watching
 notify-debouncer-mini = "0.7.0"
