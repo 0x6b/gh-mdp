@@ -1343,13 +1343,14 @@ dependencies = [
 
 [[package]]
 name = "gh-mdp"
-version = "1.5.7"
+version = "1.6.0"
 dependencies = [
  "anyhow",
  "axum",
  "clap",
  "futures",
  "ignore",
+ "linkify",
  "mime_guess",
  "notify-debouncer-mini",
  "open",
@@ -2233,6 +2234,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61ff90caf6077a803a240f62fdbe88645a890bbca49ef8174c3cb0404362171d"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "linkify"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92f9ae2f3d31697697311f016320fe984127e636b45cf5eb5c175b7eb103dadb"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
