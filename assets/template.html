@@ -31,11 +31,32 @@
     .copy-btn svg, .save-html-btn svg, .mode-btn svg, .toc-btn svg { width: 16px; height: 16px; }
     .mode-btn.active, .toc-btn.active { color: var(--accent); background: var(--bg); }
     .save-html-btn[hidden], .mode-btn[hidden], .toc-btn[hidden] { display: none; }
-    .toc-btn { display: none; }
-    .save-status { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+    .toc-btn { display: none; margin-left: auto; }
+    .save-status {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10002; /* Above the OverType toolbar and stats. */
+      width: max-content;
+      max-width: calc(100% - 32px);
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--card);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      font-size: 13px;
+      overflow-wrap: anywhere;
+      pointer-events: none;
+    }
+    .save-status:empty { padding: 0; border: 0; box-shadow: none; }
     .save-status.saving { color: var(--accent); }
-    .save-status.saved { color: #2da44e; }
+    .save-status.saved { color: #1a7f37; }
     .save-status.error { color: #cf222e; }
+    @media (prefers-color-scheme: dark) {
+      .save-status.saved { color: #3fb950; }
+      .save-status.error { color: #f85149; }
+    }
     .layout { display: flex; width: 100%; max-width: 1400px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
     .main-content { flex: 1; min-width: 0; }
     .markdown-body { background: var(--card); border: 1px solid var(--border); border-radius: 6px; padding: 32px 40px; min-height: calc(100vh - 150px); }
@@ -267,11 +288,11 @@
     <button class="mode-btn" id="mode-btn" title="Edit"{{mode_btn_attrs}}>
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>
     </button>
-    <span class="save-status" id="save-status"></span>
     <button class="toc-btn" id="toc-btn" title="Table of contents">
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm3.75-1.5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zm0 5a.75.75 0 0 0 0 1.5h8.5a.75.75 0 0 0 0-1.5h-8.5zM3 8a1 1 0 1 1-2 0 1 1 0 0 1 2 0zm-1 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2z"/></svg>
     </button>
   </header>
+  <div class="save-status" id="save-status" role="status"></div>
   <div class="layout">
     <main class="main-content">
       <article class="markdown-body" id="content">{{content}}</article>
@@ -403,10 +424,13 @@
       }
     };
 
+    let statusTimeout;
     const updateStatus = (cls, text) => {
+      clearTimeout(statusTimeout);
       const el = $('#save-status');
       el.className = 'save-status ' + cls;
       el.textContent = text;
+      if (cls === 'saved') statusTimeout = setTimeout(() => updateStatus('', ''), 2000);
     };
 
     const saveContent = async (content) => {
@@ -422,7 +446,6 @@
         const data = await res.json();
         if (data.success) {
           updateStatus('saved', 'Saved');
-          setTimeout(() => updateStatus('', ''), 2000);
         } else {
           updateStatus('error', 'Error: ' + data.error);
         }
